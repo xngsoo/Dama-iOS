@@ -9,16 +9,33 @@ import SwiftUI
 
 struct ContentView: View {
     var body: some View {
-        VStack {
-            Image(systemName: "globe")
-                .imageScale(.large)
-                .foregroundStyle(.tint)
-            Text("Hello, world!")
+        ZStack {
+            Color.damaCream
+                .ignoresSafeArea()
+            
+            VStack(spacing: DamaSpacing.lg) {
+                Text("담아")
+                    .font(.damaDisplay)
+                    .foregroundStyle(.damaInk)
+                
+                Text("우리만의 비공개 추억 앨범")
+                    .font(.damaBody)
+                    .foregroundStyle(.damaInkMuted)
+                
+                Text("🔥 Firebase Ready")
+                    .font(.damaCaption)
+                    .foregroundStyle(.damaCoral)
+                    .padding(.top, DamaSpacing.md)
+            }
         }
-        .padding()
     }
 }
 
-#Preview {
+#Preview("Light") {
     ContentView()
+}
+
+#Preview("Dark") {
+    ContentView()
+        .preferredColorScheme(.dark)
 }
