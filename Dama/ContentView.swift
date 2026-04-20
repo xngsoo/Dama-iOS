@@ -6,24 +6,28 @@
 //
 //  AuthState에 따라 Splash / Login / Main 화면으로 분기.
 //  Phase 3에서 @StateObject AuthViewModel로 교체 예정.
+//  AuthState + @AppStorage(hasCompletedOnboarding) 조합으로 라우팅.
 
 import SwiftUI
 
 struct ContentView: View {
     
     @State private var authState: AuthState = .launching
+    @AppStorage("hasCompletedOnboarding") private var hasCompletedOnboarding = false
     
     var body: some View {
         Group {
             switch authState {
             case .launching:
                 SplashView {
-                    authState = .unauthenticated
+                    authState = hasCompletedOnboarding ? .unauthenticated : .onboarding
                 }
                 
             case .onboarding:
-                // Phase 5b에서 구현
-                Text("Onboarding (Phase 5b)")
+                OnboardingView {
+                    hasCompletedOnboarding = true
+                    authState = .unauthenticated
+                }
                 
             case .unauthenticated:
                 LoginView {
@@ -31,9 +35,8 @@ struct ContentView: View {
                 }
                 
             case .authenticated:
-                // Phase 6에서 실제 홈 화면으로 교체
                 MainPlaceholderView {
-                    authState = .unauthenticated  // 임시 로그아웃 버튼용
+                    authState = .unauthenticated
                 }
             }
         }
