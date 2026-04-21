@@ -12,42 +12,56 @@ import SwiftUI
 
 struct ContentView: View {
     
-    @State private var authState: AuthState = .launching
+    @EnvironmentObject private var auth: AuthViewModel
     @AppStorage("hasCompletedOnboarding") private var hasCompletedOnboarding = false
+    
+    /// Splash 최소 노출 시간 동안만 launching 유지.
+    /// SplashView가 onComplete 호출하면 false → 실제 authState로 분기.
+    @State private var isSplashing = true
     
     var body: some View {
         Group {
-            switch authState {
-            case .launching:
+            if isSplashing {
                 SplashView {
-                    authState = hasCompletedOnboarding ? .unauthenticated : .onboarding
+                    isSplashing = false
                 }
-                
-            case .onboarding:
-                OnboardingView {
-                    hasCompletedOnboarding = true
-                    authState = .unauthenticated
-                }
-                
-            case .unauthenticated:
-                LoginView {
-                    authState = .authenticated
-                }
-                
-            case .authenticated:
-                MainPlaceholderView {
-                    authState = .unauthenticated
-                }
+            } else {
+                routedView
             }
         }
-        .animation(.easeInOut(duration: 0.35), value: authState)
+        .animation(.easeInOut(duration: 0.35), value: isSplashing)
+        .animation(.easeInOut(duration: 0.35), value: auth.authState)
+    }
+    
+    @ViewBuilder
+    private var routedView: some View {
+        switch auth.authState {
+        case .launching:
+            // Auth Listener 초기 동기화 중
+            ProgressView()
+                .tint(.damaCoral)
+                .frame(maxWidth: .infinity, maxHeight: .infinity)
+                .background(Color.damaCream.ignoresSafeArea())
+            
+        case .onboarding, .unauthenticated:
+            if !hasCompletedOnboarding {
+                OnboardingView {
+                    hasCompletedOnboarding = true
+                }
+            } else {
+                LoginView()
+            }
+            
+        case .authenticated:
+            MainPlaceholderView()
+        }
     }
 }
 
 // MARK: - Main Placeholder (Phase 6에서 대체)
 
 private struct MainPlaceholderView: View {
-    let onLogout: () -> Void
+    @EnvironmentObject private var auth: AuthViewModel
     
     var body: some View {
         ZStack {
@@ -58,12 +72,18 @@ private struct MainPlaceholderView: View {
                     .font(.damaDisplay)
                     .foregroundColor(.damaInk)
                 
+                if let name = auth.currentUser?.name {
+                    Text("\(name)님")
+                        .font(.damaSubheadline)
+                        .foregroundStyle(.damaInkMuted)
+                }
+                
                 Text("홈 화면은 Phase 6에서 만들어질 거예요")
                     .font(.damaBody)
                     .foregroundColor(.damaInkMuted)
                 
                 DamaButton("로그아웃", variant: .text) {
-                    onLogout()
+                    auth.signOut()
                 }
                 .padding(.top, DamaSpacing.xl)
             }
@@ -73,4 +93,5 @@ private struct MainPlaceholderView: View {
 
 #Preview {
     ContentView()
+        .environmentObject(AuthViewModel())
 }

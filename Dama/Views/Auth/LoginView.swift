@@ -4,16 +4,14 @@
 //
 //  Created by SEUNGSOO HAN on 4/20/26.
 //
-//  Apple · Kakao 로그인 옵션 제공.
-//  실제 인증 로직은 Phase 3(AuthService)에서 구현.
-//  현재는 버튼 탭 시 onSuccess 콜백만 호출.
+//  Apple Sign In은 Phase 3a에서 실제 동작.
+//  Kakao는 Phase 3b에서 연동 예정 (지금은 stub 유지).
 
 import SwiftUI
 import AuthenticationServices
 
 struct LoginView: View {
-    
-    let onSuccess: () -> Void
+    @EnvironmentObject private var auth: AuthViewModel
     
     var body: some View {
         ZStack {
@@ -41,17 +39,22 @@ struct LoginView: View {
                 // MARK: Auth Buttons
                 VStack(spacing: DamaSpacing.md) {
                     
-                    // Apple Sign In (네이티브 컴포넌트)
+                    // Apple Sign In
                     SignInWithAppleButton(
                         .continue,
                         onRequest: { request in
-                            request.requestedScopes = [.fullName, .email]
+                            auth.prepareAppleSignIn(request)
                         },
-                        onCompletion: handleAppleResult
+                        onCompletion:  { result in
+                            Task {
+                                await auth.handleAppleResult(result)
+                            }
+                        }
                     )
                     .signInWithAppleButtonStyle(.black)
                     .frame(height: 52)
                     .clipShape(Capsule())
+                    .disabled(auth.isLoading)
                     
                     // Kakao Login (커스텀, 브랜드 컬러 준수)
                     Button(action: handleKakaoTap) {
@@ -68,6 +71,13 @@ struct LoginView: View {
                         .clipShape(Capsule())
                     }
                     .buttonStyle(_LoginButtonPress())
+                    .disabled(auth.isLoading)
+                    
+                    if auth.isLoading {
+                        ProgressView()
+                            .tint(.damaCoral)
+                            .padding(.top, DamaSpacing.xs)
+                    }
                 }
                 .padding(.horizontal, DamaSpacing.xl)
                 
@@ -81,30 +91,31 @@ struct LoginView: View {
                     .padding(.bottom, DamaSpacing.xl)
             }
         }
+        .alert("로그인 실패", isPresented: errorBinding) {
+            Button("확인", role: .cancel) {
+                auth.clearError()
+            }
+        } message: {
+            Text(auth.errorMessage ?? "")
+        }
     }
     
-    // MARK: - Fixed Kakao Brand Colors (mode-invariant)
+    // MARK: - Binding
+    
+    private var errorBinding: Binding<Bool> {
+        Binding(
+            get: { auth.errorMessage != nil },
+            set: { if !$0 { auth.clearError() } }
+        )
+    }
+    
+    // MARK: - Kakao (Phase 3b stub 유지)
     
     private let kakaoYellow = Color(red: 254/255, green: 229/255, blue: 0/255)
     private let kakaoTextColor = Color(red: 25/255, green: 25/255, blue: 25/255)
     
-    // MARK: - Handlers (stub — Phase 3에서 실제 구현)
-    
-    private func handleAppleResult(_ result: Result<ASAuthorization, Error>) {
-        switch result {
-        case .success(let auth):
-            print("🍎 Apple 로그인 성공 — user: \(auth.credential)")
-            // TODO: Phase 3에서 FirebaseAuth 연동
-            onSuccess()
-        case .failure(let error):
-            print("🍎 Apple 로그인 실패: \(error.localizedDescription)")
-        }
-    }
-    
     private func handleKakaoTap() {
-        print("💬 Kakao 로그인 탭 (stub — Phase 3에서 KakaoSDK 연동)")
-        // TODO: Phase 3에서 KakaoSDK + FirebaseAuth 연동
-        onSuccess()
+        print("💬 Kakao 로그인 탭 — Phase 3b에서 KakaoSDK 연동 예정")
     }
 }
 
@@ -122,10 +133,12 @@ private struct _LoginButtonPress: ButtonStyle {
 // MARK: - Preview
 
 #Preview("Light") {
-    LoginView(onSuccess: { })
+    LoginView()
+        .environmentObject(AuthViewModel())
 }
 
 #Preview("Dark") {
-    LoginView(onSuccess: { })
+    LoginView()
+        .environmentObject(AuthViewModel())
         .preferredColorScheme(.dark)
 }
