@@ -20,3 +20,9 @@ DerivedData/
 
 # CocoaPods
 Pods/
+
+# Firebase Functions
+functions/node_modules/
+functions/lib/
+functions/.env
+functions/.runtimeconfig.json
