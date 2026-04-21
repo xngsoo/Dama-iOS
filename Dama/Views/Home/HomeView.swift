@@ -71,7 +71,7 @@ struct HomeView: View {
                 LazyVStack(spacing: DamaSpacing.sm) {
                     ForEach(viewModel.groups) { group in
                         NavigationLink {
-                            GroupDetailView(group: group)
+                            GroupDetailView(group: group, homeViewModel: viewModel)
                                 .environmentObject(auth)
                         } label: {
                             GroupRowView(group: group)

@@ -103,8 +103,29 @@ final class HomeViewModel: ObservableObject {
         }
     }
     
-    // MARK: - Error Dismissal
+    // MARK: - Local Sync (사진 업로드 등 자식 화면의 변경 반영)
     
+    /// 특정 그룹의 photoCount와 lastPhotoAt을 로컬에서 갱신.
+    /// 홈 리스트에서 즉시 "사진 N장 · 방금"으로 보이도록.
+    func didUploadPhotos(groupId: String, count: Int) {
+        guard count > 0,
+              let index = groups.firstIndex(where: { $0.id == groupId }) else {
+            return
+        }
+        
+        groups[index].photoCount += count
+        let now = Timestamp(date: Date())
+        groups[index].lastPhotoAt = now
+        groups[index].updatedAt = now
+        
+        // updatedAt이 방금이 됐으니 리스트 최상단으로 이동 (서버 정렬과 일치)
+        if index != 0 {
+            let moved = groups.remove(at: index)
+            groups.insert(moved, at: 0)
+        }
+    }
+    
+    // MARK: - Error Dismissal
     func clearError() {
         errorMessage = nil
     }

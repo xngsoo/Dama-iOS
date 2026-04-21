@@ -5,24 +5,31 @@
 //  Created by SEUNGSOO HAN on 4/21/26.
 //
 //  dama — Group Detail (Photo Album)
-//
-//  그룹 상세: 상단 헤더 + 3열 사진 그리드.
-//  업로드 버튼은 Phase 3c-②b에서 실제 연결.
 
 import SwiftUI
+import PhotosUI
 
 struct GroupDetailView: View {
     
     @EnvironmentObject private var auth: AuthViewModel
     @StateObject private var viewModel: GroupDetailViewModel
+    @StateObject private var uploadViewModel = PhotoUploadViewModel()
+    
+    /// 홈 리스트 갱신을 위한 참조 (옵셔널 — 다른 진입 경로에서도 재사용 가능하도록).
+    private let homeViewModel: HomeViewModel?
     
     @Environment(\.dismiss) private var dismiss
     
-    init(group: DamaGroup) {
+    @State private var pickerSelection: [PhotosPickerItem] = []
+    @State private var isPresentingUploadSheet = false
+    
+    init(group: DamaGroup, homeViewModel: HomeViewModel? = nil) {
         _viewModel = StateObject(wrappedValue: GroupDetailViewModel(group: group))
+        self.homeViewModel = homeViewModel
     }
     
     private let gridColumns = Array(repeating: GridItem(.flexible(), spacing: 4), count: 3)
+    private let uploadLimit = 10
     
     var body: some View {
         ZStack {
@@ -38,7 +45,7 @@ struct GroupDetailView: View {
             }
             ToolbarItem(placement: .topBarTrailing) {
                 Button {
-                    // Phase 7에서 그룹 설정 화면 연결
+                    // Phase 7에서 그룹 설정
                 } label: {
                     Image(systemName: "ellipsis")
                         .foregroundColor(.damaInk)
@@ -47,6 +54,17 @@ struct GroupDetailView: View {
         }
         .task {
             await viewModel.loadPhotos()
+        }
+        .onChange(of: pickerSelection) { newItems in
+            guard !newItems.isEmpty else { return }
+            Task { await handlePickerSelection(newItems) }
+        }
+        .sheet(isPresented: $isPresentingUploadSheet) {
+            PhotoUploadSheet(viewModel: uploadViewModel) {
+                isPresentingUploadSheet = false
+                uploadViewModel.reset()
+            }
+            .presentationDetents([.medium])
         }
     }
     
@@ -77,7 +95,7 @@ struct GroupDetailView: View {
                     ForEach(viewModel.photos) { photo in
                         PhotoThumbnailView(photo: photo)
                             .onTapGesture {
-                                // Phase 7에서 사진 상세 뷰로
+                                // Phase 7: 사진 상세 뷰
                             }
                     }
                 }
@@ -128,9 +146,9 @@ struct GroupDetailView: View {
             
             Spacer()
             
-            DamaButton("사진 올리기", fullWidth: true) {
-                handleUploadTap()
-            }
+            uploadPicker(label: {
+                DamaButtonLabel(title: "사진 올리기")
+            })
             .padding(.horizontal, DamaSpacing.xl)
             .padding(.bottom, DamaSpacing.xl)
         }
@@ -175,9 +193,7 @@ struct GroupDetailView: View {
     // MARK: - Upload FAB
     
     private var uploadFAB: some View {
-        Button {
-            handleUploadTap()
-        } label: {
+        uploadPicker(label: {
             Image(systemName: "plus")
                 .font(.system(size: 22, weight: .medium))
                 .foregroundColor(_PrimaryCream)
@@ -185,37 +201,78 @@ struct GroupDetailView: View {
                 .background(Color.damaCoral)
                 .clipShape(Circle())
                 .shadow(color: .black.opacity(0.15), radius: 6, x: 0, y: 3)
-        }
+        })
         .padding(.trailing, DamaSpacing.lg)
         .padding(.bottom, DamaSpacing.lg)
     }
     
+    // MARK: - Photos Picker Wrapper
+    
+    private func uploadPicker<Label: View>(
+        @ViewBuilder label: @escaping () -> Label
+    ) -> some View {
+        PhotosPicker(
+            selection: $pickerSelection,
+            maxSelectionCount: uploadLimit,
+            matching: .images
+        ) {
+            label()
+        }
+    }
+    
     private let _PrimaryCream = Color(red: 251/255, green: 244/255, blue: 229/255)
     
-    // MARK: - Actions
+    // MARK: - Handle Picker Selection
     
-    private func handleUploadTap() {
-        // Phase 3c-②b에서 PhotoPicker 연결
-        print("📸 업로드 탭 — Phase 3c-②b에서 구현 예정")
+    private func handlePickerSelection(_ items: [PhotosPickerItem]) async {
+        guard let user = auth.currentUser, let groupId = viewModel.group.id else {
+            pickerSelection = []
+            return
+        }
+        
+        // 1. PhotosPickerItem → UIImage 변환
+        var images: [UIImage] = []
+        for item in items {
+            if let data = try? await item.loadTransferable(type: Data.self),
+               let image = UIImage(data: data) {
+                images.append(image)
+            }
+        }
+        
+        pickerSelection = []  // 선택 상태 즉시 클리어
+        
+        guard !images.isEmpty else { return }
+        
+        // 2. 업로드 시트 띄우고 업로드 시작
+        isPresentingUploadSheet = true
+        
+        let uploaded = await uploadViewModel.uploadImages(
+            images,
+            groupId: groupId,
+            uploader: user
+        )
+        
+        // 3. 그리드에 즉시 반영
+        viewModel.prependUploaded(uploaded)
+        
+        // 홈 그리드에도 반영
+        homeViewModel?.didUploadPhotos(groupId: groupId, count: uploaded.count)
     }
 }
 
-// MARK: - Preview
+// MARK: - Helper View
 
-#Preview {
-    NavigationStack {
-        GroupDetailView(
-            group: DamaGroup(
-                id: "preview",
-                name: "찐친클럽",
-                coverEmoji: "🥂",
-                inviteCode: "ABC123",
-                ownerId: "me",
-                memberIds: ["me", "a", "b"],
-                memberCount: 3,
-                photoCount: 0
-            )
-        )
-        .environmentObject(AuthViewModel())
+/// PhotosPicker의 label로 쓸 DamaButton 스타일 라벨.
+/// (PhotosPicker가 자체 Button을 만들기 때문에 DamaButton을 직접 쓰면 이중 Button이 됨)
+private struct DamaButtonLabel: View {
+    let title: String
+    var body: some View {
+        Text(title)
+            .font(.damaLabel)
+            .foregroundColor(Color(red: 251/255, green: 244/255, blue: 229/255))
+            .frame(maxWidth: .infinity)
+            .padding(.vertical, DamaSpacing.md)
+            .background(Color.damaCoral)
+            .clipShape(Capsule())
     }
 }

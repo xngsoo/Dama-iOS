@@ -43,6 +43,18 @@ final class GroupDetailViewModel: ObservableObject {
         }
     }
     
+    // MARK: - Insert (업로드 직후 로컬 반영)
+    
+    /// 새로 업로드한 사진들을 그리드 최상단에 추가.
+    /// Firestore 재조회 없이 즉시 UI에 반영.
+    func prependUploaded(_ photos: [Photo]) {
+        photos.forEach { photo in
+            if !self.photos.contains(where: { $0.id == photo.id }) {
+                self.photos.insert(photo, at: 0)
+            }
+        }
+    }
+    
     func refresh() async {
         await loadPhotos()
     }
