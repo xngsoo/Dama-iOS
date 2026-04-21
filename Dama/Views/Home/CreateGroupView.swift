@@ -158,18 +158,20 @@ struct CreateGroupView: View {
     // MARK: - Submit
     
     private func submit() async {
-        guard let ownerId = auth.currentUser?.id ?? auth.currentUser?.email else { return }
+        guard let user = auth.currentUser else { return }
         isCreating = true
         defer { isCreating = false }
         
         let trimmed = name.trimmingCharacters(in: .whitespaces)
-        let group = await homeViewModel.createGroup(
+        if let group = await homeViewModel.createGroup(
             name: trimmed,
             coverEmoji: selectedEmoji,
-            ownerId: ownerId
-        )
-        nameFocused = false
-        createdGroup = group
+            owner: user
+        ) {
+            nameFocused = false
+            createdGroup = group
+        }
+        // 실패 시 homeViewModel.errorMessage가 설정됨 (알림은 Phase 3c-③에서 정식화)
     }
 }
 

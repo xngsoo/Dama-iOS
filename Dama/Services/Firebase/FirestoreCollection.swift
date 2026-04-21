@@ -6,18 +6,23 @@
 //
 //  컬렉션 경로 문자열을 한 곳에서 관리하기 위한 헬퍼.
 //  ⚠️ 모든 서비스는 raw Firestore.firestore() 호출 대신 이 enum 사용.
+//  dama — Firestore Collection References
 
 import FirebaseFirestore
 
 enum FirestoreCollection {
     
-    // MARK: - Top-level collections
+    // MARK: - Top-level
     static var users: CollectionReference {
         Firestore.firestore().collection("users")
     }
     
     static var groups: CollectionReference {
         Firestore.firestore().collection("groups")
+    }
+    
+    static var inviteCodes: CollectionReference {
+        Firestore.firestore().collection("inviteCodes")
     }
     
     // MARK: - Subcollections
@@ -40,5 +45,9 @@ enum FirestoreCollection {
     
     static func group(_ groupId: String) -> DocumentReference {
         groups.document(groupId)
+    }
+    
+    static func inviteCode(_ code: String) -> DocumentReference {
+        inviteCodes.document(code)
     }
 }

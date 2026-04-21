@@ -23,7 +23,7 @@ struct HomeView: View {
         }
         .task {
             if viewModel.groups.isEmpty {
-                await viewModel.loadGroups()
+                await viewModel.loadGroups(for: auth.currentUser?.id)
             }
         }
         .sheet(isPresented: $isPresentingCreateGroup) {
@@ -32,6 +32,7 @@ struct HomeView: View {
         }
         .sheet(isPresented: $isPresentingJoinGroup) {
             JoinGroupView(homeViewModel: viewModel)
+                .environmentObject(auth)
         }
     }
     
@@ -92,7 +93,7 @@ struct HomeView: View {
             }
         }
         .refreshable {
-            await viewModel.refresh()
+            await viewModel.refresh(for: auth.currentUser?.id)
         }
     }
     

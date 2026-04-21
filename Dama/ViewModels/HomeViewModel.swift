@@ -4,8 +4,6 @@
 //
 //  Created by SEUNGSOO HAN on 4/21/26.
 //
-//  현재는 더미 데이터로 동작.
-//  Phase 3c에서 GroupService로 교체 예정.
 
 import Foundation
 import FirebaseFirestore
@@ -27,114 +25,87 @@ final class HomeViewModel: ObservableObject {
         case notFound
         case alreadyMember
         case full
+        case failed
     }
     
     // MARK: - Load
     
-    func loadGroups() async {
+    func loadGroups(for uid: String?) async {
+        guard let uid = uid else {
+            groups = []
+            return
+        }
+        
         isLoading = true
         defer { isLoading = false }
         
-        // TODO: Phase 3c — GroupService.shared.fetchGroups(for: uid)
-        try? await Task.sleep(for: .milliseconds(400))
-        if groups.isEmpty {
-            groups = Self.makeDummyGroups()
+        do {
+            groups = try await GroupService.shared.fetchGroups(for: uid)
+        } catch let error as GroupError {
+            errorMessage = error.errorDescription
+        } catch {
+            errorMessage = GroupError.firestoreFailure(error).errorDescription
         }
     }
     
-    func refresh() async {
-        await loadGroups()
+    func refresh(for uid: String?) async {
+        await loadGroups(for: uid)
     }
     
     // MARK: - Create
     
-    /// 새 그룹을 생성하고 리스트 최상단에 추가.
-    /// 현재는 메모리 더미. Phase 3c에서 GroupService.shared.createGroup 로 교체.
     @discardableResult
     func createGroup(
         name: String,
         coverEmoji: String?,
-        ownerId: String
-    ) async -> DamaGroup {
-        // TODO: Phase 3c — 실제 Firestore 생성
-        try? await Task.sleep(for: .milliseconds(400))
-        
-        let now = Timestamp(date: Date())
-        var new = DamaGroup.new(name: name, ownerId: ownerId, coverEmoji: coverEmoji)
-        new.id = "local-\(UUID().uuidString.prefix(8))"
-        new.createdAt = now
-        new.updatedAt = now
-        
-        groups.insert(new, at: 0)
-        return new
+        owner: User
+    ) async -> DamaGroup? {
+        do {
+            let new = try await GroupService.shared.createGroup(
+                name: name,
+                coverEmoji: coverEmoji,
+                owner: owner
+            )
+            groups.insert(new, at: 0)
+            return new
+        } catch let error as GroupError {
+            errorMessage = error.errorDescription
+            return nil
+        } catch {
+            errorMessage = GroupError.firestoreFailure(error).errorDescription
+            return nil
+        }
     }
     
     // MARK: - Join
     
-    /// 초대 코드로 기존 그룹에 참여. 현재는 로컬 배열에서 코드 매칭.
-    /// Phase 3c에서 Firestore collectionGroup 쿼리로 교체.
-    func joinGroup(inviteCode: String) async -> JoinResult {
-        try? await Task.sleep(for: .milliseconds(500))
-        
-        // TODO: Phase 3c — GroupService.shared.joinByInviteCode(code, uid)
-        guard let index = groups.firstIndex(where: { $0.inviteCode == inviteCode }) else {
+    func joinGroup(inviteCode: String, user: User) async -> JoinResult {
+        do {
+            let joined = try await GroupService.shared.joinGroup(
+                inviteCode: inviteCode,
+                user: user
+            )
+            // 리스트 최상단에 추가 (이미 있으면 중복 방지)
+            if !groups.contains(where: { $0.id == joined.id }) {
+                groups.insert(joined, at: 0)
+            }
+            return .success
+        } catch GroupError.inviteCodeNotFound {
             return .notFound
+        } catch GroupError.alreadyMember {
+            return .alreadyMember
+        } catch GroupError.groupIsFull {
+            return .full
+        } catch {
+            errorMessage = (error as? GroupError)?.errorDescription
+                ?? GroupError.firestoreFailure(error).errorDescription
+            return .failed
         }
-        let group = groups[index]
-        
-        if group.isFull { return .full }
-        // 더미 단계에선 이미 참여 중 판별이 불완전하므로 간단히 처리
-        return .alreadyMember
     }
     
-    // MARK: - Dummy Data
+    // MARK: - Error Dismissal
     
-    private static func makeDummyGroups() -> [DamaGroup] {
-        let now = Timestamp(date: Date())
-        let hoursAgo: (Int) -> Timestamp = { hours in
-            Timestamp(date: Date().addingTimeInterval(-Double(hours * 3600)))
-        }
-        
-        return [
-//            DamaGroup(
-//                id: "dummy-1",
-//                name: "찐친클럽",
-//                coverEmoji: "🥂",
-//                inviteCode: "ABC123",
-//                ownerId: "me",
-//                memberIds: ["me", "a", "b"],
-//                memberCount: 3,
-//                photoCount: 127,
-//                createdAt: hoursAgo(24 * 40),
-//                updatedAt: hoursAgo(48),
-//                lastPhotoAt: hoursAgo(48)
-//            ),
-//            DamaGroup(
-//                id: "dummy-2",
-//                name: "우리 가족",
-//                coverEmoji: "🏡",
-//                inviteCode: "FAM456",
-//                ownerId: "me",
-//                memberIds: ["me", "c", "d", "e", "f"],
-//                memberCount: 5,
-//                photoCount: 482,
-//                createdAt: hoursAgo(24 * 180),
-//                updatedAt: now,
-//                lastPhotoAt: now
-//            ),
-//            DamaGroup(
-//                id: "dummy-3",
-//                name: "제주 2025",
-//                coverEmoji: "🌊",
-//                inviteCode: "JEJ789",
-//                ownerId: "me",
-//                memberIds: ["me", "g", "h", "i"],
-//                memberCount: 4,
-//                photoCount: 89,
-//                createdAt: hoursAgo(24 * 7),
-//                updatedAt: hoursAgo(24 * 7),
-//                lastPhotoAt: hoursAgo(24 * 7)
-//            ),
-        ]
+    func clearError() {
+        errorMessage = nil
     }
 }

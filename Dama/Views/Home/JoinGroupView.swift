@@ -11,6 +11,7 @@ import SwiftUI
 
 struct JoinGroupView: View {
     
+    @EnvironmentObject private var auth: AuthViewModel
     @ObservedObject var homeViewModel: HomeViewModel
     @Environment(\.dismiss) private var dismiss
     
@@ -20,6 +21,7 @@ struct JoinGroupView: View {
     
     @FocusState private var codeFocused: Bool
     
+    private var homeViewModelUser: User? { auth.currentUser }
     private var sanitized: String {
         code.uppercased().filter { $0.isLetter || $0.isNumber }
     }
@@ -106,12 +108,15 @@ struct JoinGroupView: View {
     }
     
     // MARK: - Submit
-    
     private func submit() async {
+        guard let user = homeViewModelUser else {
+            errorText = "로그인이 필요해요"
+            return
+        }
         isJoining = true
         defer { isJoining = false }
         
-        let result = await homeViewModel.joinGroup(inviteCode: sanitized)
+        let result = await homeViewModel.joinGroup(inviteCode: sanitized, user: user)
         switch result {
         case .success:
             dismiss()
@@ -121,6 +126,8 @@ struct JoinGroupView: View {
             errorText = "이미 참여한 그룹이에요"
         case .full:
             errorText = "그룹이 가득 찼어요 (최대 10명)"
+        case .failed:
+            errorText = homeViewModel.errorMessage ?? "참여에 실패했어요"
         }
     }
 }
