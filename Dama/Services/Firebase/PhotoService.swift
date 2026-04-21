@@ -105,6 +105,7 @@ final class PhotoService {
             width: Int(processedOriginal.size.width),
             height: Int(processedOriginal.size.height),
             likeCount: 0,
+            likedBy: [],
             commentCount: 0,
             uploadedAt: Timestamp(date: Date()),
             takenAt: nil
@@ -136,6 +137,39 @@ final class PhotoService {
         }
         
         return photo
+    }
+    
+    // MARK: - Like
+    /// 좋아요 상태 변경.
+    /// - Parameter currentlyLiked: 현재 유저가 이미 좋아요를 눌렀는지 (호출자가 판정).
+    /// - Returns: 변경 후 liked 여부.
+    func setLike(
+        photo: Photo,
+        uid: String,
+        currentlyLiked: Bool
+    ) async throws -> Bool {
+        guard let photoId = photo.id else {
+            throw PhotoError.photoNotFound
+        }
+        let ref = FirestoreCollection.photos(groupId: photo.groupId).document(photoId)
+        
+        do {
+            if currentlyLiked {
+                try await ref.updateData([
+                    "likedBy": FieldValue.arrayRemove([uid]),
+                    "likeCount": FieldValue.increment(Int64(-1)),
+                ])
+                return false
+            } else {
+                try await ref.updateData([
+                    "likedBy": FieldValue.arrayUnion([uid]),
+                    "likeCount": FieldValue.increment(Int64(1)),
+                ])
+                return true
+            }
+        } catch {
+            throw PhotoError.firestoreFailure(error)
+        }
     }
     
     // MARK: - Storage Helpers

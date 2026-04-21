@@ -27,6 +27,7 @@ struct Photo: Codable, Identifiable, Hashable {
     var height: Int
     
     var likeCount: Int
+    var likedBy: [String]?
     var commentCount: Int
     
     @ServerTimestamp var uploadedAt: Timestamp?
@@ -40,4 +41,8 @@ struct Photo: Codable, Identifiable, Hashable {
     }
     
     var isPortrait: Bool { aspectRatio < 1 }
+    
+    func isLikedBy(_ uid: String) -> Bool {
+        likedBy?.contains(uid) ?? false
+    }
 }

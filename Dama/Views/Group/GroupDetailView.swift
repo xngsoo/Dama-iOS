@@ -14,7 +14,8 @@ struct GroupDetailView: View {
     @EnvironmentObject private var auth: AuthViewModel
     @StateObject private var viewModel: GroupDetailViewModel
     @StateObject private var uploadViewModel = PhotoUploadViewModel()
-    
+    @State private var selectedPhotoWrapper: IndexWrapper?
+
     /// 홈 리스트 갱신을 위한 참조 (옵셔널 — 다른 진입 경로에서도 재사용 가능하도록).
     private let homeViewModel: HomeViewModel?
     
@@ -66,6 +67,10 @@ struct GroupDetailView: View {
             }
             .presentationDetents([.medium])
         }
+        .fullScreenCover(item: $selectedPhotoWrapper) { wrapper in
+            PhotoDetailView(photos: viewModel.photos, startIndex: wrapper.id)
+                .environmentObject(auth)
+        }
     }
     
     // MARK: - Content
@@ -95,7 +100,9 @@ struct GroupDetailView: View {
                     ForEach(viewModel.photos) { photo in
                         PhotoThumbnailView(photo: photo)
                             .onTapGesture {
-                                // Phase 7: 사진 상세 뷰
+                                if let index = viewModel.photos.firstIndex(where: { $0.id == photo.id }) {
+                                    selectedPhotoWrapper = IndexWrapper(id: index)
+                                }
                             }
                     }
                 }
@@ -275,4 +282,9 @@ private struct DamaButtonLabel: View {
             .background(Color.damaCoral)
             .clipShape(Capsule())
     }
+}
+
+// Int를 fullScreenCover의 item으로 쓰기 위한 래퍼
+private struct IndexWrapper: Identifiable {
+    let id: Int
 }
