@@ -195,7 +195,14 @@ final class GroupService {
                 return nil
             }
         } catch let error as NSError {
-            // 내부에서 throw한 비즈니스 에러를 GroupError로 변환
+            #if DEBUG
+            print("🔴 joinGroup 실패")
+            print("🔴 domain: \(error.domain)")
+            print("🔴 code: \(error.code)")
+            print("🔴 description: \(error.localizedDescription)")
+            print("🔴 userInfo: \(error.userInfo)")
+            #endif
+            
             switch error.localizedDescription {
             case "group_not_found": throw GroupError.groupNotFound
             case "already_member": throw GroupError.alreadyMember

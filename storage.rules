@@ -1,0 +1,33 @@
+rules_version = '2';
+
+service firebase.storage {
+  match /b/{bucket}/o {
+
+    // 그룹별 파일: 멤버만 읽기·쓰기
+    match /groups/{groupId}/{allPaths=**} {
+
+      allow read: if isGroupMember(groupId);
+
+      // 쓰기: 이미지 only, 최대 10MB
+      allow write: if isGroupMember(groupId)
+                   && request.resource.size < 10 * 1024 * 1024
+                   && request.resource.contentType.matches('image/.*');
+
+      allow delete: if isGroupMember(groupId);
+    }
+
+    // 다른 경로는 모두 차단
+    match /{allPaths=**} {
+      allow read, write: if false;
+    }
+
+    // ----- Helpers -----
+    function isGroupMember(groupId) {
+      return request.auth != null &&
+             request.auth.uid in
+               firestore.get(
+                 /databases/(default)/documents/groups/$(groupId)
+               ).data.memberIds;
+    }
+  }
+}

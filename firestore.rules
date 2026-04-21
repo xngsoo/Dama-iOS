@@ -1,0 +1,136 @@
+rules_version = '2';
+
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    // ============================================================
+    // Helper Functions
+    // ============================================================
+
+    function isSignedIn() {
+      return request.auth != null;
+    }
+
+    function isOwnUser(uid) {
+      return isSignedIn() && request.auth.uid == uid;
+    }
+
+    function isGroupMember(groupId) {
+      return isSignedIn() &&
+             request.auth.uid in
+               get(/databases/$(database)/documents/groups/$(groupId)).data.memberIds;
+    }
+
+    function isGroupOwner(groupId) {
+      return isSignedIn() &&
+             request.auth.uid ==
+               get(/databases/$(database)/documents/groups/$(groupId)).data.ownerId;
+    }
+
+    /// 비멤버가 자신만 memberIds에 추가하는 유효한 join인지.
+    function isValidJoin(groupId) {
+      let before = resource.data;
+      let after = request.resource.data;
+      return isSignedIn()
+        && request.auth.uid in after.memberIds
+        && !(request.auth.uid in before.memberIds)
+        && after.memberIds.size() == before.memberIds.size() + 1
+        && after.ownerId == before.ownerId
+        && after.inviteCode == before.inviteCode;
+    }
+
+    // ============================================================
+    // /users/{uid}
+    // ============================================================
+    match /users/{uid} {
+      allow read: if isOwnUser(uid);
+      allow create: if isOwnUser(uid);
+      allow update: if isOwnUser(uid)
+                    && request.resource.data.email == resource.data.email
+                    && request.resource.data.createdAt == resource.data.createdAt;
+      allow delete: if false;
+    }
+
+    // ============================================================
+    // /groups/{groupId}
+    // ============================================================
+    match /groups/{groupId} {
+
+      allow get: if isSignedIn();
+
+      allow list: if isSignedIn()
+                  && request.auth.uid in resource.data.memberIds;
+
+      allow create: if isSignedIn()
+                    && request.resource.data.ownerId == request.auth.uid
+                    && request.resource.data.memberIds == [request.auth.uid]
+                    && request.resource.data.memberCount == 1
+                    && request.resource.data.photoCount == 0;
+
+      allow update: if
+        isGroupMember(groupId)
+        || isValidJoin(groupId);
+
+      allow delete: if isGroupOwner(groupId);
+
+      // ----------------------------------------------------------
+      match /members/{memberId} {
+        allow get, list: if isGroupMember(groupId);
+
+        // 자기 자신 레코드만 생성 (create/join 공용)
+        allow create: if isOwnUser(memberId);
+
+        allow update: if isOwnUser(memberId)
+                      && request.resource.data.role == resource.data.role
+                      && request.resource.data.userId == resource.data.userId
+                      && request.resource.data.joinedAt == resource.data.joinedAt;
+
+        allow delete: if isOwnUser(memberId) || isGroupOwner(groupId);
+      }
+
+      // ----------------------------------------------------------
+      match /photos/{photoId} {
+        allow get, list: if isGroupMember(groupId);
+
+        allow create: if isGroupMember(groupId)
+                      && request.resource.data.uploaderId == request.auth.uid
+                      && request.resource.data.groupId == groupId;
+
+        allow update: if isGroupMember(groupId)
+                      && request.resource.data.uploaderId == resource.data.uploaderId
+                      && request.resource.data.storagePath == resource.data.storagePath
+                      && request.resource.data.uploadedAt == resource.data.uploadedAt;
+
+        allow delete: if isSignedIn()
+                      && (resource.data.uploaderId == request.auth.uid
+                          || isGroupOwner(groupId));
+
+        // ------------------------------------------------------
+        match /comments/{commentId} {
+          allow get, list: if isGroupMember(groupId);
+
+          allow create: if isGroupMember(groupId)
+                        && request.resource.data.userId == request.auth.uid;
+
+          allow update: if isSignedIn()
+                        && resource.data.userId == request.auth.uid
+                        && request.resource.data.userId == resource.data.userId
+                        && request.resource.data.createdAt == resource.data.createdAt;
+
+          allow delete: if isSignedIn()
+                        && (resource.data.userId == request.auth.uid
+                            || isGroupOwner(groupId));
+        }
+      }
+    }
+
+    // ============================================================
+    // /inviteCodes/{code}
+    // ============================================================
+    match /inviteCodes/{code} {
+      allow read: if isSignedIn();
+      allow create: if isSignedIn();
+      allow update, delete: if false;
+    }
+  }
+}
