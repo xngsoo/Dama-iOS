@@ -6,6 +6,7 @@
 //
 //  Firebase Auth 상태를 관찰하고, AuthState enum으로 변환해 UI에 전달.
 //  ContentView는 이 ViewModel만 보면 됨.
+//  dama — Global Auth State
 
 import Foundation
 import FirebaseAuth
@@ -56,7 +57,6 @@ final class AuthViewModel: ObservableObject {
             return
         }
         
-        // Firestore User 문서 로드
         do {
             let user = try await UserService.shared.fetchUser(uid: firebaseUser.uid)
             currentUser = user
@@ -65,14 +65,12 @@ final class AuthViewModel: ObservableObject {
             #if DEBUG
             print("⚠️ User 문서 로드 실패: \(error.localizedDescription)")
             #endif
-            // Firestore 동기화 실패 시에도 UI는 진입시키되 currentUser는 nil 유지
             authState = .authenticated
         }
     }
     
     // MARK: - Apple Sign In
     
-    /// LoginView에서 ASAuthorizationAppleIDRequest를 만들기 직전 호출.
     func prepareAppleSignIn(_ request: ASAuthorizationAppleIDRequest) {
         let nonce = AppleSignInCoordinator.randomNonce()
         AppleSignInCoordinator.currentNonce = nonce
@@ -80,7 +78,6 @@ final class AuthViewModel: ObservableObject {
         request.nonce = AppleSignInCoordinator.sha256(nonce)
     }
     
-    /// SignInWithAppleButton의 onCompletion에서 호출.
     func handleAppleResult(_ result: Result<ASAuthorization, Error>) async {
         isLoading = true
         defer { isLoading = false }
@@ -94,7 +91,6 @@ final class AuthViewModel: ObservableObject {
             do {
                 let user = try await AuthService.shared.signInWithApple(credential: credential)
                 currentUser = user
-                // authState 변경은 listener가 자동 처리
             } catch let error as AuthError {
                 errorMessage = error.errorDescription
             } catch {
@@ -102,23 +98,50 @@ final class AuthViewModel: ObservableObject {
             }
             
         case .failure(let error):
-            // 사용자가 취소한 경우는 에러 표시 안 함
             if (error as NSError).code != ASAuthorizationError.canceled.rawValue {
                 errorMessage = AuthError.signInFailed(error).errorDescription
             }
         }
     }
     
+    // MARK: - Kakao Sign In
+    
+    func signInWithKakao() async {
+        isLoading = true
+        defer { isLoading = false }
+        
+        do {
+            let user = try await KakaoAuthService.shared.signIn()
+            currentUser = user
+            // authState는 listener가 자동 전환
+        } catch let error as AuthError {
+            // 사용자 취소는 에러 표시 안 함 (KakaoSDK ClientFailureReason.Cancelled)
+            if !isKakaoUserCancelled(error) {
+                errorMessage = error.errorDescription
+            }
+        } catch {
+            errorMessage = AuthError.unknown(error).errorDescription
+        }
+    }
+    
+    private func isKakaoUserCancelled(_ error: AuthError) -> Bool {
+        guard case .kakaoSDKError(let underlying) = error else { return false }
+        // KakaoSDK는 취소 시 ClientFailed(-777) 같은 에러를 반환.
+        // 에러 description에 "cancel"이 포함되면 취소로 간주.
+        return underlying.localizedDescription.lowercased().contains("cancel")
+    }
+    
     // MARK: - Sign Out
     
     func signOut() {
-        do {
-            try AuthService.shared.signOut()
-            // listener가 .unauthenticated로 자동 전환
-        } catch let error as AuthError {
-            errorMessage = error.errorDescription
-        } catch {
-            errorMessage = AuthError.unknown(error).errorDescription
+        Task {
+            do {
+                try await AuthService.shared.signOut()
+            } catch let error as AuthError {
+                errorMessage = error.errorDescription
+            } catch {
+                errorMessage = AuthError.unknown(error).errorDescription
+            }
         }
     }
     

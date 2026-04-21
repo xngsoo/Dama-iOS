@@ -13,6 +13,7 @@
 		5B50B7372F96081700BDA0EF /* FirebaseStorage in Frameworks */ = {isa = PBXBuildFile; productRef = 5B50B7362F96081700BDA0EF /* FirebaseStorage */; };
 		5B50B7A92F97311300BDA0EF /* KakaoSDKCommon in Frameworks */ = {isa = PBXBuildFile; productRef = 5B50B7A82F97311300BDA0EF /* KakaoSDKCommon */; };
 		5B50B7AB2F97311300BDA0EF /* KakaoSDKUser in Frameworks */ = {isa = PBXBuildFile; productRef = 5B50B7AA2F97311300BDA0EF /* KakaoSDKUser */; };
+		5B50B7B12F973C0900BDA0EF /* FirebaseFunctions in Frameworks */ = {isa = PBXBuildFile; productRef = 5B50B7B02F973C0900BDA0EF /* FirebaseFunctions */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXFileReference section */
@@ -46,6 +47,7 @@
 			buildActionMask = 2147483647;
 			files = (
 				5B50B7352F96081700BDA0EF /* FirebaseMessaging in Frameworks */,
+				5B50B7B12F973C0900BDA0EF /* FirebaseFunctions in Frameworks */,
 				5B50B7372F96081700BDA0EF /* FirebaseStorage in Frameworks */,
 				5B50B7AB2F97311300BDA0EF /* KakaoSDKUser in Frameworks */,
 				5B50B7312F96081700BDA0EF /* FirebaseAuth in Frameworks */,
@@ -61,6 +63,7 @@
 			isa = PBXGroup;
 			children = (
 				5B50B6F52F95FA8C00BDA0EF /* Dama */,
+				5B50B7AF2F973C0900BDA0EF /* Frameworks */,
 				5B50B6F42F95FA8C00BDA0EF /* Products */,
 			);
 			sourceTree = "<group>";
@@ -71,6 +74,13 @@
 				5B50B6F32F95FA8C00BDA0EF /* Dama.app */,
 			);
 			name = Products;
+			sourceTree = "<group>";
+		};
+		5B50B7AF2F973C0900BDA0EF /* Frameworks */ = {
+			isa = PBXGroup;
+			children = (
+			);
+			name = Frameworks;
 			sourceTree = "<group>";
 		};
 /* End PBXGroup section */
@@ -99,6 +109,7 @@
 				5B50B7362F96081700BDA0EF /* FirebaseStorage */,
 				5B50B7A82F97311300BDA0EF /* KakaoSDKCommon */,
 				5B50B7AA2F97311300BDA0EF /* KakaoSDKUser */,
+				5B50B7B02F973C0900BDA0EF /* FirebaseFunctions */,
 			);
 			productName = Dama;
 			productReference = 5B50B6F32F95FA8C00BDA0EF /* Dama.app */;
@@ -442,6 +453,11 @@
 			isa = XCSwiftPackageProductDependency;
 			package = 5B50B7A72F97311300BDA0EF /* XCRemoteSwiftPackageReference "kakao-ios-sdk" */;
 			productName = KakaoSDKUser;
+		};
+		5B50B7B02F973C0900BDA0EF /* FirebaseFunctions */ = {
+			isa = XCSwiftPackageProductDependency;
+			package = 5B50B72F2F96081700BDA0EF /* XCRemoteSwiftPackageReference "firebase-ios-sdk" */;
+			productName = FirebaseFunctions;
 		};
 /* End XCSwiftPackageProductDependency section */
 	};

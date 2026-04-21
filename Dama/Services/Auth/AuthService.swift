@@ -93,7 +93,10 @@ final class AuthService {
     
     // MARK: - Sign Out
     
-    func signOut() throws {
+    func signOut() async throws {
+        // Kakao SDK 세션 정리 (실패해도 Firebase 로그아웃은 계속 진행)
+        await KakaoAuthService.shared.logoutKakaoSession()
+        
         do {
             try Auth.auth().signOut()
         } catch {

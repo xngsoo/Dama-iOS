@@ -115,7 +115,9 @@ struct LoginView: View {
     private let kakaoTextColor = Color(red: 25/255, green: 25/255, blue: 25/255)
     
     private func handleKakaoTap() {
-        print("💬 Kakao 로그인 탭 — Phase 3b에서 KakaoSDK 연동 예정")
+        Task {
+            await auth.signInWithKakao()
+        }
     }
 }
 

@@ -16,6 +16,7 @@ import {getFirestore, FieldValue} from "firebase-admin/firestore";
 setGlobalOptions({
   region: "asia-northeast3",
   maxInstances: 10,
+  serviceAccount: "firebase-adminsdk-fbsvc@dama-382bb.iam.gserviceaccount.com",
 });
 
 initializeApp();

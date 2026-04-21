@@ -4,6 +4,7 @@
 //
 //  Created by SEUNGSOO HAN on 4/21/26.
 //
+//  dama — Auth Domain Errors
 
 import Foundation
 
@@ -11,6 +12,9 @@ enum AuthError: LocalizedError {
     case userNotFound
     case appleCredentialMissing
     case appleNonceFailure
+    case kakaoTokenMissing
+    case kakaoSDKError(Error)
+    case functionsCallFailed(Error)
     case firestoreSync(Error)
     case signInFailed(Error)
     case signOutFailed(Error)
@@ -24,6 +28,12 @@ enum AuthError: LocalizedError {
             return "Apple 로그인 정보를 받아오지 못했어요"
         case .appleNonceFailure:
             return "Apple 로그인 보안 검증에 실패했어요"
+        case .kakaoTokenMissing:
+            return "카카오 토큰을 받아오지 못했어요"
+        case .kakaoSDKError:
+            return "카카오 로그인에 실패했어요"
+        case .functionsCallFailed:
+            return "서버와 통신에 실패했어요"
         case .firestoreSync:
             return "사용자 정보 저장에 실패했어요"
         case .signInFailed:
