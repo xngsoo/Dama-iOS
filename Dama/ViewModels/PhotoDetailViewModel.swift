@@ -60,6 +60,12 @@ final class PhotoDetailViewModel: ObservableObject {
         photo.likedBy = ids
     }
     
+    // MARK: - Comment Count Sync
+    /// 댓글이 추가/삭제됐을 때 로컬 photo.commentCount 갱신 (시트에서 호출).
+    func didChangeCommentCount(delta: Int) {
+        photo.commentCount = max(0, photo.commentCount + delta)
+    }
+    
     // MARK: - Error
     
     func clearError() {

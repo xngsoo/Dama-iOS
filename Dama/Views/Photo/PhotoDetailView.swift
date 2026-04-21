@@ -20,6 +20,7 @@ struct PhotoDetailView: View {
     
     /// 인덱스별 ViewModel (좋아요 상태 등을 유지).
     @State private var viewModels: [String: PhotoDetailViewModel]
+    @State private var isPresentingComments = false
     
     init(photos: [Photo], startIndex: Int) {
         self.photos = photos
@@ -52,12 +53,24 @@ struct PhotoDetailView: View {
                 topBar
                 Spacer()
                 if let vm = currentViewModel {
-                    BottomBar(viewModel: vm, uid: auth.currentUser?.id ?? "")
+                    BottomBar(
+                        viewModel: vm,
+                        uid: auth.currentUser?.id ?? "",
+                        onCommentTap: { isPresentingComments = true }
+                    )
                 }
             }
         }
         .statusBar(hidden: true)
         .navigationBarHidden(true)
+        .sheet(isPresented: $isPresentingComments) {
+            if let vm = currentViewModel {
+                CommentsSheet(photo: vm.photo) { delta in
+                    vm.didChangeCommentCount(delta: delta)
+                }
+                .environmentObject(auth)
+            }
+        }
     }
     
     // MARK: - Top Bar
@@ -110,6 +123,7 @@ private struct BottomBar: View {
     
     @ObservedObject var viewModel: PhotoDetailViewModel
     let uid: String
+    let onCommentTap: () -> Void
     
     private let tint = Color(red: 251/255, green: 244/255, blue: 229/255)
     
@@ -139,7 +153,7 @@ private struct BottomBar: View {
                 
                 // 댓글 (Phase 7a-② stub)
                 Button {
-                    // TODO: Phase 7a-②
+                    onCommentTap()
                 } label: {
                     HStack(spacing: 5) {
                         Image(systemName: "bubble.left")
