@@ -17,14 +17,15 @@ struct HomeView: View {
     @State private var isPresentingJoinGroup = false
     
     var body: some View {
-        ZStack {
-            Color.damaCream.ignoresSafeArea()
-            content
-        }
-        .task {
-            if viewModel.groups.isEmpty {
-                await viewModel.loadGroups(for: auth.currentUser?.id)
+        NavigationStack {
+            ZStack {
+                Color.damaCream.ignoresSafeArea()
+                content
             }
+            .navigationBarHidden(true)
+        }
+        .task(id: auth.currentUser?.id) {
+            await viewModel.loadGroups(for: auth.currentUser?.id)
         }
         .sheet(isPresented: $isPresentingCreateGroup) {
             CreateGroupView(homeViewModel: viewModel)
@@ -69,14 +70,17 @@ struct HomeView: View {
                 
                 LazyVStack(spacing: DamaSpacing.sm) {
                     ForEach(viewModel.groups) { group in
-                        GroupRowView(group: group) {
-                            print("Tapped: \(group.name)")
+                        NavigationLink {
+                            GroupDetailView(group: group)
+                                .environmentObject(auth)
+                        } label: {
+                            GroupRowView(group: group)
                         }
+                        .buttonStyle(.plain)
                     }
                 }
                 .padding(.horizontal, DamaSpacing.lg)
                 
-                // "참여하기" — 리스트 있을 때의 보조 진입점
                 Button {
                     isPresentingJoinGroup = true
                 } label: {

@@ -12,7 +12,12 @@ import FirebaseCore
 struct GroupRowView: View {
     
     let group: DamaGroup
-    let onTap: () -> Void
+    let onTap: (() -> Void)?
+    
+    init(group: DamaGroup, onTap: (() -> Void)? = nil) {
+        self.group = group
+        self.onTap = onTap
+    }
     
     var body: some View {
         DamaCard(action: onTap) {
