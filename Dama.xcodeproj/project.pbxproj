@@ -11,6 +11,8 @@
 		5B50B7332F96081700BDA0EF /* FirebaseFirestore in Frameworks */ = {isa = PBXBuildFile; productRef = 5B50B7322F96081700BDA0EF /* FirebaseFirestore */; };
 		5B50B7352F96081700BDA0EF /* FirebaseMessaging in Frameworks */ = {isa = PBXBuildFile; productRef = 5B50B7342F96081700BDA0EF /* FirebaseMessaging */; };
 		5B50B7372F96081700BDA0EF /* FirebaseStorage in Frameworks */ = {isa = PBXBuildFile; productRef = 5B50B7362F96081700BDA0EF /* FirebaseStorage */; };
+		5B50B7A92F97311300BDA0EF /* KakaoSDKCommon in Frameworks */ = {isa = PBXBuildFile; productRef = 5B50B7A82F97311300BDA0EF /* KakaoSDKCommon */; };
+		5B50B7AB2F97311300BDA0EF /* KakaoSDKUser in Frameworks */ = {isa = PBXBuildFile; productRef = 5B50B7AA2F97311300BDA0EF /* KakaoSDKUser */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXFileReference section */
@@ -45,7 +47,9 @@
 			files = (
 				5B50B7352F96081700BDA0EF /* FirebaseMessaging in Frameworks */,
 				5B50B7372F96081700BDA0EF /* FirebaseStorage in Frameworks */,
+				5B50B7AB2F97311300BDA0EF /* KakaoSDKUser in Frameworks */,
 				5B50B7312F96081700BDA0EF /* FirebaseAuth in Frameworks */,
+				5B50B7A92F97311300BDA0EF /* KakaoSDKCommon in Frameworks */,
 				5B50B7332F96081700BDA0EF /* FirebaseFirestore in Frameworks */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
@@ -93,6 +97,8 @@
 				5B50B7322F96081700BDA0EF /* FirebaseFirestore */,
 				5B50B7342F96081700BDA0EF /* FirebaseMessaging */,
 				5B50B7362F96081700BDA0EF /* FirebaseStorage */,
+				5B50B7A82F97311300BDA0EF /* KakaoSDKCommon */,
+				5B50B7AA2F97311300BDA0EF /* KakaoSDKUser */,
 			);
 			productName = Dama;
 			productReference = 5B50B6F32F95FA8C00BDA0EF /* Dama.app */;
@@ -124,6 +130,7 @@
 			minimizedProjectReferenceProxies = 1;
 			packageReferences = (
 				5B50B72F2F96081700BDA0EF /* XCRemoteSwiftPackageReference "firebase-ios-sdk" */,
+				5B50B7A72F97311300BDA0EF /* XCRemoteSwiftPackageReference "kakao-ios-sdk" */,
 			);
 			preferredProjectObjectVersion = 77;
 			productRefGroup = 5B50B6F42F95FA8C00BDA0EF /* Products */;
@@ -158,6 +165,8 @@
 /* Begin XCBuildConfiguration section */
 		5B50B6FC2F95FA8D00BDA0EF /* Debug */ = {
 			isa = XCBuildConfiguration;
+			baseConfigurationReferenceAnchor = 5B50B6F52F95FA8C00BDA0EF /* Dama */;
+			baseConfigurationReferenceRelativePath = Config/Secrets.xcconfig;
 			buildSettings = {
 				ALWAYS_SEARCH_USER_PATHS = NO;
 				ASSETCATALOG_COMPILER_GENERATE_SWIFT_ASSET_SYMBOL_EXTENSIONS = YES;
@@ -222,6 +231,8 @@
 		};
 		5B50B6FD2F95FA8D00BDA0EF /* Release */ = {
 			isa = XCBuildConfiguration;
+			baseConfigurationReferenceAnchor = 5B50B6F52F95FA8C00BDA0EF /* Dama */;
+			baseConfigurationReferenceRelativePath = Config/Secrets.xcconfig;
 			buildSettings = {
 				ALWAYS_SEARCH_USER_PATHS = NO;
 				ASSETCATALOG_COMPILER_GENERATE_SWIFT_ASSET_SYMBOL_EXTENSIONS = YES;
@@ -279,6 +290,8 @@
 		};
 		5B50B6FF2F95FA8D00BDA0EF /* Debug */ = {
 			isa = XCBuildConfiguration;
+			baseConfigurationReferenceAnchor = 5B50B6F52F95FA8C00BDA0EF /* Dama */;
+			baseConfigurationReferenceRelativePath = Config/Secrets.xcconfig;
 			buildSettings = {
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
 				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
@@ -318,6 +331,8 @@
 		};
 		5B50B7002F95FA8D00BDA0EF /* Release */ = {
 			isa = XCBuildConfiguration;
+			baseConfigurationReferenceAnchor = 5B50B6F52F95FA8C00BDA0EF /* Dama */;
+			baseConfigurationReferenceRelativePath = Config/Secrets.xcconfig;
 			buildSettings = {
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
 				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
@@ -387,6 +402,14 @@
 				minimumVersion = 11.0.0;
 			};
 		};
+		5B50B7A72F97311300BDA0EF /* XCRemoteSwiftPackageReference "kakao-ios-sdk" */ = {
+			isa = XCRemoteSwiftPackageReference;
+			repositoryURL = "https://github.com/kakao/kakao-ios-sdk";
+			requirement = {
+				kind = upToNextMajorVersion;
+				minimumVersion = 2.27.3;
+			};
+		};
 /* End XCRemoteSwiftPackageReference section */
 
 /* Begin XCSwiftPackageProductDependency section */
@@ -409,6 +432,16 @@
 			isa = XCSwiftPackageProductDependency;
 			package = 5B50B72F2F96081700BDA0EF /* XCRemoteSwiftPackageReference "firebase-ios-sdk" */;
 			productName = FirebaseStorage;
+		};
+		5B50B7A82F97311300BDA0EF /* KakaoSDKCommon */ = {
+			isa = XCSwiftPackageProductDependency;
+			package = 5B50B7A72F97311300BDA0EF /* XCRemoteSwiftPackageReference "kakao-ios-sdk" */;
+			productName = KakaoSDKCommon;
+		};
+		5B50B7AA2F97311300BDA0EF /* KakaoSDKUser */ = {
+			isa = XCSwiftPackageProductDependency;
+			package = 5B50B7A72F97311300BDA0EF /* XCRemoteSwiftPackageReference "kakao-ios-sdk" */;
+			productName = KakaoSDKUser;
 		};
 /* End XCSwiftPackageProductDependency section */
 	};

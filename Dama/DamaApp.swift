@@ -6,7 +6,7 @@
 //
 
 import SwiftUI
-
+import KakaoSDKAuth
 @main
 struct DamaApp: App {
     
@@ -24,6 +24,11 @@ struct DamaApp: App {
         WindowGroup {
             ContentView()
                 .environmentObject(authViewModel)
+                .onOpenURL { url in
+                    if AuthApi.isKakaoTalkLoginUrl(url) {
+                        _ = AuthController.handleOpenUrl(url: url)
+                    }
+                }
         }
     }
 }

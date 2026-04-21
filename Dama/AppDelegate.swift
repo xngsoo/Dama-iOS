@@ -9,6 +9,8 @@ import UIKit
 import FirebaseCore
 import FirebaseMessaging
 import UserNotifications
+import KakaoSDKCommon
+import KakaoSDKAuth
 
 final class AppDelegate: NSObject, UIApplicationDelegate {
     
@@ -19,7 +21,10 @@ final class AppDelegate: NSObject, UIApplicationDelegate {
         // 1. Firebase 초기화
         FirebaseApp.configure()
         
-        // 2. 알림 & Messaging delegate 등록
+        // 2. Kakao 초기화
+        configureKakaoSDK()
+        
+        // 3. 알림 & Messaging delegate 등록
         UNUserNotificationCenter.current().delegate = self
         Messaging.messaging().delegate = self
         
@@ -28,6 +33,15 @@ final class AppDelegate: NSObject, UIApplicationDelegate {
         #endif
         
         return true
+    }
+    
+    // MARK: - URL Open (Kakao 리다이렉션)
+    private func application(_ app: UIApplication, open url: URL, options: [UIApplication.OpenExternalURLOptionsKey: Any] = [:]
+    ) -> Bool {
+        if AuthApi.isKakaoTalkLoginUrl(url) {
+            return AuthController.handleOpenUrl(url: url)
+        }
+        return false
     }
     
     // MARK: - APNs Token
@@ -39,6 +53,23 @@ final class AppDelegate: NSObject, UIApplicationDelegate {
     func application(_ application: UIApplication, didFailToRegisterForRemoteNotificationsWithError error: Error) {
         #if DEBUG
         print("⚠️ APNs 등록 실패: \(error.localizedDescription)")
+        #endif
+    }
+    
+    // MARK: - Kakao SDK init
+    private func configureKakaoSDK() {
+        guard let appKey = Bundle.main.object(forInfoDictionaryKey: "KAKAO_NATIVE_APP_KEY") as? String,
+        !appKey.isEmpty,
+        !appKey.hasPrefix("$(") else {
+            #if DEBUG
+            print("⚠️ KAKAO_NATIVE_APP_KEY 누락 — Secrets.xcconfig 확인 필요")
+            #endif
+            return
+        }
+        KakaoSDK.initSDK(appKey: appKey)
+        
+        #if DEBUG
+        print("💬 Kakao SDK initialized (app key: \(appKey.prefix(4))…)")
         #endif
     }
 }
