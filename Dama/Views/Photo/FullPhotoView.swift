@@ -23,7 +23,7 @@ struct FullPhotoView: View {
     var body: some View {
         GeometryReader { geo in
             ZStack {
-                Color.black.opacity(0.001)  // 제스처 인식용
+                Color.damaInk  // 제스처 인식용
                 
                 Group {
                     if let url {

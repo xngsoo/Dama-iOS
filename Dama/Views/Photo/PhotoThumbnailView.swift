@@ -46,8 +46,6 @@ struct PhotoThumbnailView: View {
                     .tint(.damaInkSubtle)
             }
         }
-        .aspectRatio(1, contentMode: .fit)
-        .clipShape(RoundedRectangle(cornerRadius: DamaRadius.sm))
         .task(id: photo.id) {
             await loadURL()
         }

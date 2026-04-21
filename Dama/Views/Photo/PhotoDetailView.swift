@@ -48,18 +48,20 @@ struct PhotoDetailView: View {
         ZStack {
             Color.damaInk.ignoresSafeArea()
             
-            TabView(selection: $currentIndex) {
-                ForEach(Array(photos.enumerated()), id: \.element.id) { index, photo in
-                    FullPhotoView(photo: photo)
-                        .tag(index)
-                }
-            }
-            .tabViewStyle(.page(indexDisplayMode: .never))
-            .ignoresSafeArea()
-            
-            VStack {
+            VStack(spacing: 0) {
                 topBar
-                Spacer()
+                    .padding(.top, DamaSpacing.xs)
+                // 사진 영역: 상하 바 사이의 가용 공간을 모두 차지하고
+                // 그 안에서 비율 유지하며 최대 크기로 fit.
+                TabView(selection: $currentIndex) {
+                    ForEach(Array(photos.enumerated()), id: \.element.id) { index, photo in
+                        FullPhotoView(photo: photo)
+                            .tag(index)
+                    }
+                }
+                .tabViewStyle(.page(indexDisplayMode: .never))
+                .frame(maxWidth: .infinity, maxHeight: .infinity)
+                
                 if let vm = currentViewModel {
                     BottomBar(
                         viewModel: vm,
@@ -143,7 +145,7 @@ struct PhotoDetailView: View {
             Color.clear.frame(width: 36, height: 36)
         }
         .padding(.horizontal, DamaSpacing.lg)
-        .padding(.top, DamaSpacing.xl + DamaSpacing.sm)
+        .padding(.vertical, DamaSpacing.xs)
     }
     
     // MARK: - Helpers
@@ -287,5 +289,6 @@ private struct BottomBar: View {
         }
         .padding(.horizontal, DamaSpacing.lg)
         .padding(.bottom, DamaSpacing.xl)
+        .padding(.top, DamaSpacing.xs)
     }
 }

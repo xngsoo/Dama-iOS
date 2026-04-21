@@ -29,7 +29,8 @@ struct GroupDetailView: View {
         self.homeViewModel = homeViewModel
     }
     
-    private let gridColumns = Array(repeating: GridItem(.flexible(), spacing: 4), count: 3)
+    private let gridColumnCount = 3
+    private let gridSpacing: CGFloat = 4
     private let uploadLimit = 10
     
     var body: some View {
@@ -100,31 +101,46 @@ struct GroupDetailView: View {
     // MARK: - Photo Grid
     
     private var photoGrid: some View {
-        ScrollView {
-            VStack(spacing: 0) {
-                groupHeader
-                    .padding(.horizontal, DamaSpacing.lg)
-                    .padding(.vertical, DamaSpacing.md)
-                
-                LazyVGrid(columns: gridColumns, spacing: 4) {
-                    ForEach(viewModel.photos) { photo in
-                        PhotoThumbnailView(photo: photo)
-                            .onTapGesture {
-                                if let index = viewModel.photos.firstIndex(where: { $0.id == photo.id }) {
-                                    selectedPhotoWrapper = IndexWrapper(id: index)
+        GeometryReader { geo in
+            let horizontalPadding = DamaSpacing.md * 2
+            let totalSpacing = gridSpacing * CGFloat(gridColumnCount - 1)
+            let cellSize = floor((geo.size.width - horizontalPadding - totalSpacing) / CGFloat(gridColumnCount))
+            
+            let columns = Array(
+                repeating: GridItem(.fixed(cellSize), spacing: gridSpacing),
+                count: gridColumnCount
+            )
+            
+            ScrollView {
+                VStack(spacing: 0) {
+                    groupHeader
+                        .padding(.horizontal, DamaSpacing.lg)
+                        .padding(.vertical, DamaSpacing.md)
+                    
+                    LazyVGrid(columns: columns, spacing: gridSpacing) {
+                        ForEach(viewModel.photos) { photo in
+                            PhotoThumbnailView(photo: photo)
+                                .frame(width: cellSize, height: cellSize)
+                                .clipped()
+                                .clipShape(RoundedRectangle(cornerRadius: DamaRadius.sm))
+                                .contentShape(Rectangle())
+                                .onTapGesture {
+                                    if let index = viewModel.photos.firstIndex(where: { $0.id == photo.id }) {
+                                        selectedPhotoWrapper = IndexWrapper(id: index)
+                                    }
                                 }
-                            }
+                        }
                     }
+                    .padding(.horizontal, DamaSpacing.md)
+                    .padding(.bottom, DamaSpacing.xxl)
                 }
-                .padding(.horizontal, DamaSpacing.md)
-                .padding(.bottom, DamaSpacing.xxl)
             }
-        }
-        .refreshable {
-            await viewModel.refresh()
-        }
-        .overlay(alignment: .bottomTrailing) {
-            uploadFAB
+            .refreshable {
+                await viewModel.refresh()
+            }
+            .overlay(alignment: .bottomTrailing) {
+                uploadFAB
+            }
         }
     }
     
