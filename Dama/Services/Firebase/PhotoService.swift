@@ -172,6 +172,93 @@ final class PhotoService {
         }
     }
     
+    // MARK: - Delete
+    /// 사진 삭제. Firestore 문서 + 서브컬렉션(comments) + Storage 파일을 정리.
+    ///
+    /// 권한 체크는 보안 규칙에 위임. 클라이언트에서도 방어적으로 확인하려면
+    /// photo.uploaderId 또는 group.ownerId 비교 후 호출.
+    func deletePhoto(_ photo: Photo) async throws {
+        guard let photoId = photo.id else {
+            throw PhotoError.photoNotFound
+        }
+        
+        let photoRef = FirestoreCollection.photos(groupId: photo.groupId).document(photoId)
+        let groupRef = FirestoreCollection.group(photo.groupId)
+        let db = Firestore.firestore()
+        
+        // 1. 댓글 서브컬렉션 먼저 일괄 삭제 (트랜잭션 밖)
+        //    트랜잭션은 서브컬렉션을 재귀 삭제 못함.
+        await deleteCommentsSubcollection(groupId: photo.groupId, photoId: photoId)
+        
+        // 2. Firestore Photo 문서 + group.photoCount 동시 갱신 (트랜잭션)
+        do {
+            _ = try await db.runTransaction { transaction, _ in
+                transaction.deleteDocument(photoRef)
+                transaction.updateData([
+                    "photoCount": FieldValue.increment(Int64(-1)),
+                    "updatedAt": FieldValue.serverTimestamp(),
+                ], forDocument: groupRef)
+                return nil
+            }
+        } catch {
+            throw PhotoError.firestoreFailure(error)
+        }
+        
+        // 3. Storage 파일 정리 (best-effort, 실패해도 swallow)
+        try? await deleteStorageFile(path: photo.storagePath)
+        if let thumbPath = photo.thumbnailPath {
+            try? await deleteStorageFile(path: thumbPath)
+        }
+    }
+    
+    /// 댓글 서브컬렉션 문서들을 페이지 단위로 삭제.
+    /// 1000개 이상이면 반복.
+    private func deleteCommentsSubcollection(groupId: String, photoId: String) async {
+        let commentsRef = FirestoreCollection.comments(groupId: groupId, photoId: photoId)
+        
+        while true {
+            do {
+                let snapshot = try await commentsRef.limit(to: 100).getDocuments()
+                if snapshot.documents.isEmpty { return }
+                
+                let batch = Firestore.firestore().batch()
+                for doc in snapshot.documents {
+                    batch.deleteDocument(doc.reference)
+                }
+                try await batch.commit()
+                
+                if snapshot.documents.count < 100 { return }  // 마지막 페이지
+            } catch {
+                #if DEBUG
+                print("⚠️ 댓글 서브컬렉션 삭제 실패: \(error.localizedDescription)")
+                #endif
+                return  // 실패하면 포기하고 메인 삭제는 진행
+            }
+        }
+    }
+    
+    // MARK: - Listen
+    /// 단일 사진 문서를 실시간 구독.
+    /// 좋아요·댓글 카운트 등이 다른 유저에 의해 변경될 때 즉시 반영용.
+    func listenPhoto(
+        groupId: String,
+        photoId: String,
+        onUpdate: @escaping (Photo) -> Void,
+        onError: @escaping (Error) -> Void
+    ) -> ListenerRegistration {
+        return FirestoreCollection.photos(groupId: groupId).document(photoId)
+            .addSnapshotListener { snapshot, error in
+                if let error = error {
+                    onError(error)
+                    return
+                }
+                guard let snapshot = snapshot, snapshot.exists else { return }
+                if let photo = try? snapshot.data(as: Photo.self) {
+                    onUpdate(photo)
+                }
+            }
+    }
+    
     // MARK: - Storage Helpers
     
     private func uploadToStorage(data: Data, path: String) async throws -> StorageMetadata {

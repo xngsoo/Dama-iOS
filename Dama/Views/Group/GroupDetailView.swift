@@ -68,8 +68,18 @@ struct GroupDetailView: View {
             .presentationDetents([.medium])
         }
         .fullScreenCover(item: $selectedPhotoWrapper) { wrapper in
-            PhotoDetailView(photos: viewModel.photos, startIndex: wrapper.id)
-                .environmentObject(auth)
+            PhotoDetailView(
+                photos: viewModel.photos,
+                startIndex: wrapper.id,
+                groupOwnerId: viewModel.group.ownerId,
+                onPhotoDeleted: { photoId in
+                    viewModel.didDeletePhoto(id: photoId)
+                    if let groupId = viewModel.group.id {
+                        homeViewModel?.didDeletePhoto(groupId: groupId)
+                    }
+                }
+            )
+            .environmentObject(auth)
         }
     }
     

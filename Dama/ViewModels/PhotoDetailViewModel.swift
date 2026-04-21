@@ -4,10 +4,10 @@
 //
 //  Created by SEUNGSOO HAN on 4/21/26.
 //
-//  좋아요·댓글 상태를 관리. 댓글은 Phase 7a-②에서 추가.
-//  낙관적 업데이트(optimistic update)로 즉각 반응.
+//  dama — Photo Detail Screen State
 
 import Foundation
+import FirebaseFirestore
 import Combine
 
 @MainActor
@@ -15,32 +15,66 @@ final class PhotoDetailViewModel: ObservableObject {
     
     @Published var photo: Photo
     @Published private(set) var errorMessage: String?
+    @Published private(set) var isDeleted = false
+    
+    private var listener: ListenerRegistration?
     
     init(photo: Photo) {
         self.photo = photo
     }
     
+    deinit {
+        listener?.remove()
+    }
+    
+    // MARK: - Listen
+    
+    func startListening() {
+        guard listener == nil, let photoId = photo.id else { return }
+        
+        listener = PhotoService.shared.listenPhoto(
+            groupId: photo.groupId,
+            photoId: photoId,
+            onUpdate: { [weak self] updated in
+                Task { @MainActor in
+                    guard let self else { return }
+                    // 낙관적 업데이트로 바뀐 로컬 값이 서버 값으로 동기화됨.
+                    // 서로 한쪽만 최신일 수 있어서 'updatedAt' 같은 기준으로 비교하는 게 이상적이지만,
+                    // 대부분 서버 값이 최신이라 덮어쓰기로 충분.
+                    self.photo = updated
+                }
+            },
+            onError: { [weak self] error in
+                Task { @MainActor in
+                    self?.errorMessage = error.localizedDescription
+                }
+            }
+        )
+    }
+    
+    func stopListening() {
+        listener?.remove()
+        listener = nil
+    }
+    
     // MARK: - Like
+    
     func toggleLike(uid: String) async {
         guard !uid.isEmpty else { return }
-        
-        // 1. 판정은 딱 한 번 — 낙관적 업데이트 전의 상태 기준
         let wasLiked = photo.isLikedBy(uid)
         
-        // 2. 낙관적 업데이트 먼저 (UI 즉시 반영)
         applyLikeOptimistically(uid: uid, liked: !wasLiked)
         
-        // 3. 서버에는 "원래 상태 + 판정 결과"를 명시적으로 전달
         do {
             _ = try await PhotoService.shared.setLike(
-                photo: photo,       // 낙관적 업데이트된 photo여도 상관없음 — liked 판정은 currentlyLiked로 전달되므로
+                photo: photo,
                 uid: uid,
-                currentlyLiked: wasLiked  // 판정 당시 값 그대로
+                currentlyLiked: wasLiked
             )
         } catch {
             applyLikeOptimistically(uid: uid, liked: wasLiked)
             errorMessage = (error as? PhotoError)?.errorDescription
-            ?? "좋아요에 실패했어요"
+                ?? "좋아요에 실패했어요"
         }
     }
     
@@ -61,9 +95,27 @@ final class PhotoDetailViewModel: ObservableObject {
     }
     
     // MARK: - Comment Count Sync
-    /// 댓글이 추가/삭제됐을 때 로컬 photo.commentCount 갱신 (시트에서 호출).
+    
     func didChangeCommentCount(delta: Int) {
         photo.commentCount = max(0, photo.commentCount + delta)
+    }
+    
+    // MARK: - Delete
+    
+    /// 사진 삭제. 성공 시 isDeleted=true로 부모 뷰가 dismiss 가능.
+    @discardableResult
+    func deletePhoto() async -> Bool {
+        do {
+            try await PhotoService.shared.deletePhoto(photo)
+            // listener 해제 먼저 — deleted 문서에 대한 이벤트 방지
+            stopListening()
+            isDeleted = true
+            return true
+        } catch {
+            errorMessage = (error as? PhotoError)?.errorDescription
+                ?? "삭제에 실패했어요"
+            return false
+        }
     }
     
     // MARK: - Error

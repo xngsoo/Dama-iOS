@@ -103,6 +103,12 @@ final class HomeViewModel: ObservableObject {
         }
     }
     
+    /// 특정 그룹의 photoCount를 로컬에서 1 감소.
+    func didDeletePhoto(groupId: String) {
+        guard let index = groups.firstIndex(where: { $0.id == groupId }) else { return }
+        groups[index].photoCount = max(0, groups[index].photoCount - 1)
+    }
+    
     // MARK: - Local Sync (사진 업로드 등 자식 화면의 변경 반영)
     
     /// 특정 그룹의 photoCount와 lastPhotoAt을 로컬에서 갱신.
