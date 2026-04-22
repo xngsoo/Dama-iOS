@@ -82,8 +82,10 @@ service cloud.firestore {
 
         allow update: if isOwnUser(memberId)
                       && request.resource.data.role == resource.data.role
+                      ||
+                      (isGroupOwner(groupId)
                       && request.resource.data.userId == resource.data.userId
-                      && request.resource.data.joinedAt == resource.data.joinedAt;
+                      && request.resource.data.joinedAt == resource.data.joinedAt);
 
         allow delete: if isOwnUser(memberId) || isGroupOwner(groupId);
       }

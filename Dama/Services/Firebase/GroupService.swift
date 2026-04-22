@@ -204,6 +204,187 @@ final class GroupService {
         }
     }
     
+    // MARK: - Edit
+    /// 그룹 이름·커버 이모지 수정. Owner만 가능.
+    func updateGroupInfo(
+        groupId: String,
+        ownerUid: String,
+        name: String,
+        coverEmoji: String?
+    ) async throws {
+        let group = try await fetchGroup(groupId)
+        guard group.ownerId == ownerUid else {
+            throw GroupError.notAuthorized
+        }
+        
+        let trimmed = name.trimmingCharacters(in: .whitespaces)
+        guard trimmed.count >= 2, trimmed.count <= 20 else {
+            throw GroupError.firestoreFailure(
+                NSError(domain: "GroupService", code: 400,
+                        userInfo: [NSLocalizedDescriptionKey: "이름은 2-20자여야 해요"])
+            )
+        }
+        
+        do {
+            var updates: [String: Any] = [
+                "name": trimmed,
+                "updatedAt": FieldValue.serverTimestamp(),
+            ]
+            if let emoji = coverEmoji {
+                updates["coverEmoji"] = emoji
+            }
+            try await FirestoreCollection.group(groupId).updateData(updates)
+        } catch {
+            throw GroupError.firestoreFailure(error)
+        }
+    }
+    
+    // MARK: - Invite Code Regeneration
+    
+    /// 초대 코드 재발급. 기존 코드를 회수하고 새 코드를 발급.
+    /// Owner만 가능. 반환값: 새 그룹 (새 코드 포함).
+    func regenerateInviteCode(
+        groupId: String,
+        ownerUid: String
+    ) async throws -> DamaGroup {
+        let group = try await fetchGroup(groupId)
+        guard group.ownerId == ownerUid else {
+            throw GroupError.notAuthorized
+        }
+        
+        // 새 유니크 코드 확보
+        let newCode = try await generateUniqueInviteCode(maxAttempts: 3)
+        
+        let oldCodeRef = FirestoreCollection.inviteCode(group.inviteCode)
+        let newCodeRef = FirestoreCollection.inviteCode(newCode)
+        let groupRef = FirestoreCollection.group(groupId)
+        let db = Firestore.firestore()
+        
+        do {
+            _ = try await db.runTransaction { transaction, errorPointer in
+                transaction.deleteDocument(oldCodeRef)
+                transaction.setData([
+                    "groupId": groupId,
+                    "createdAt": FieldValue.serverTimestamp(),
+                ], forDocument: newCodeRef)
+                transaction.updateData([
+                    "inviteCode": newCode,
+                    "updatedAt": FieldValue.serverTimestamp(),
+                ], forDocument: groupRef)
+                return nil
+            }
+        } catch {
+            throw GroupError.firestoreFailure(error)
+        }
+        
+        return try await fetchGroup(groupId)
+    }
+    
+    // MARK: - Owner Transfer
+    
+    /// 그룹장 권한을 다른 멤버에게 이양. 기존 owner → member, 대상 → owner.
+    func transferOwnership(
+        groupId: String,
+        currentOwnerUid: String,
+        newOwnerUid: String
+    ) async throws {
+        guard currentOwnerUid != newOwnerUid else {
+            throw GroupError.notAuthorized
+        }
+        
+        let group = try await fetchGroup(groupId)
+        guard group.ownerId == currentOwnerUid else {
+            throw GroupError.notAuthorized
+        }
+        guard group.isMember(newOwnerUid) else {
+            throw GroupError.notAMember
+        }
+        
+        let groupRef = FirestoreCollection.group(groupId)
+        let oldOwnerMemberRef = FirestoreCollection.members(groupId: groupId).document(currentOwnerUid)
+        let newOwnerMemberRef = FirestoreCollection.members(groupId: groupId).document(newOwnerUid)
+        let db = Firestore.firestore()
+        
+        do {
+            _ = try await db.runTransaction { transaction, errorPointer in
+                transaction.updateData([
+                    "ownerId": newOwnerUid,
+                    "updatedAt": FieldValue.serverTimestamp(),
+                ], forDocument: groupRef)
+                transaction.updateData([
+                    "role": GroupMember.Role.member.rawValue,
+                ], forDocument: oldOwnerMemberRef)
+                transaction.updateData([
+                    "role": GroupMember.Role.owner.rawValue,
+                ], forDocument: newOwnerMemberRef)
+                return nil
+            }
+        } catch {
+            throw GroupError.firestoreFailure(error)
+        }
+    }
+    
+    // MARK: - Remove Member (Owner-only)
+    
+    /// Owner가 다른 멤버를 그룹에서 내보냄.
+    func removeMember(
+        groupId: String,
+        ownerUid: String,
+        targetUid: String
+    ) async throws {
+        #if DEBUG
+        print("🔍 removeMember 시작 — groupId: \(groupId), owner: \(ownerUid), target: \(targetUid)")
+        #endif
+        guard ownerUid != targetUid else {
+            throw GroupError.notAuthorized  // 자기 자신은 "나가기"로
+        }
+        
+        let group = try await fetchGroup(groupId)
+        guard group.ownerId == ownerUid else {
+            #if DEBUG
+            print("🔍 권한 체크 실패 — 실제 owner: \(group.ownerId), 요청자: \(ownerUid)")
+            #endif
+            throw GroupError.notAuthorized
+        }
+        guard group.isMember(targetUid) else {
+            #if DEBUG
+            print("🔍 target이 멤버가 아님 — memberIds: \(group.memberIds)")
+            #endif
+            throw GroupError.notAMember
+        }
+        
+        let groupRef = FirestoreCollection.group(groupId)
+        let memberRef = FirestoreCollection.members(groupId: groupId).document(targetUid)
+        let userRef = FirestoreCollection.user(targetUid)
+        let db = Firestore.firestore()
+        
+        do {
+            _ = try await db.runTransaction { transaction, errorPointer in
+                #if DEBUG
+                print("🔍 트랜잭션 실행 중...")
+                #endif
+                transaction.updateData([
+                    "memberIds": FieldValue.arrayRemove([targetUid]),
+                    "memberCount": FieldValue.increment(Int64(-1)),
+                    "updatedAt": FieldValue.serverTimestamp(),
+                ], forDocument: groupRef)
+                transaction.deleteDocument(memberRef)
+                return nil
+            }
+            #if DEBUG
+            print("🔍 트랜잭션 성공")
+            #endif
+        } catch {
+            #if DEBUG
+            print("🔴 removeMember 실패: \(error.localizedDescription)")
+            if let nsError = error as NSError? {
+                print("🔴 domain: \(nsError.domain), code: \(nsError.code)")
+                print("🔴 userInfo: \(nsError.userInfo)")
+            }
+            #endif
+            throw GroupError.firestoreFailure(error)
+        }
+    }
     // MARK: - Join
     
     /// 초대 코드로 그룹 참여.
