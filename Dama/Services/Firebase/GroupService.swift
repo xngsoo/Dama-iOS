@@ -116,6 +116,94 @@ final class GroupService {
         return try await fetchGroup(groupId)
     }
     
+    // MARK: - Members
+    /// 그룹 멤버 목록 조회. 소유자 먼저, 그 다음 joinedAt 순.
+    func fetchMembers(groupId: String) async throws -> [GroupMember] {
+        do {
+            let snapshot = try await FirestoreCollection.members(groupId: groupId)
+                .order(by: "joinedAt", descending: false)
+                .getDocuments()
+            
+            let members = try snapshot.documents.compactMap { doc in
+                try doc.data(as: GroupMember.self)
+            }
+            
+            // owner를 맨 앞으로
+            return members.sorted { lhs, rhs in
+                if lhs.isOwner != rhs.isOwner { return lhs.isOwner }
+                return (lhs.joinedAt?.seconds ?? 0) < (rhs.joinedAt?.seconds ?? 0)
+            }
+        } catch {
+            throw GroupError.firestoreFailure(error)
+        }
+    }
+    
+    // MARK: - Leave
+    
+    /// 그룹 나가기. 트랜잭션으로 3곳 정리:
+    ///   - /groups/{id} memberIds·memberCount 감소
+    ///   - /groups/{id}/members/{uid} 삭제
+    ///   - /users/{uid} groupIds 제거
+    func leaveGroup(groupId: String, uid: String) async throws {
+        guard !uid.isEmpty else { throw GroupError.notAuthenticated }
+        
+        // Owner는 나가기 불가 (UI에서 막지만 방어적으로 재확인)
+        let group = try await fetchGroup(groupId)
+        if group.ownerId == uid {
+            throw GroupError.cannotLeaveAsOwner
+        }
+        
+        let groupRef = FirestoreCollection.group(groupId)
+        let memberRef = FirestoreCollection.members(groupId: groupId).document(uid)
+        let userRef = FirestoreCollection.user(uid)
+        let db = Firestore.firestore()
+        
+        do {
+            _ = try await db.runTransaction { transaction, errorPointer in
+                transaction.updateData([
+                    "memberIds": FieldValue.arrayRemove([uid]),
+                    "memberCount": FieldValue.increment(Int64(-1)),
+                    "updatedAt": FieldValue.serverTimestamp(),
+                ], forDocument: groupRef)
+                transaction.deleteDocument(memberRef)
+                transaction.updateData([
+                    "groupIds": FieldValue.arrayRemove([groupId]),
+                    "updatedAt": FieldValue.serverTimestamp(),
+                ], forDocument: userRef)
+                return nil
+            }
+        } catch {
+            throw GroupError.firestoreFailure(error)
+        }
+    }
+    
+    // MARK: - Delete
+    /// 그룹 삭제 (owner만). deletedAt 플래그 세팅 + inviteCode 즉시 회수.
+    /// 실제 사진·멤버·댓글 정리는 Cloud Function이 후속 처리 (Phase 8b).
+    func deleteGroup(groupId: String, ownerUid: String) async throws {
+        let group = try await fetchGroup(groupId)
+        guard group.ownerId == ownerUid else {
+            throw GroupError.notAuthorized
+        }
+        
+        let groupRef = FirestoreCollection.group(groupId)
+        let inviteCodeRef = FirestoreCollection.inviteCode(group.inviteCode)
+        let db = Firestore.firestore()
+        
+        do {
+            _ = try await db.runTransaction { transaction, errorPointer in
+                transaction.updateData([
+                    "deletedAt": FieldValue.serverTimestamp(),
+                    "updatedAt": FieldValue.serverTimestamp(),
+                ], forDocument: groupRef)
+                transaction.deleteDocument(inviteCodeRef)
+                return nil
+            }
+        } catch {
+            throw GroupError.firestoreFailure(error)
+        }
+    }
+    
     // MARK: - Join
     
     /// 초대 코드로 그룹 참여.

@@ -15,7 +15,8 @@ struct GroupDetailView: View {
     @StateObject private var viewModel: GroupDetailViewModel
     @StateObject private var uploadViewModel = PhotoUploadViewModel()
     @State private var selectedPhotoWrapper: IndexWrapper?
-
+    @State private var isPresentingSettings: Bool = false
+    
     /// 홈 리스트 갱신을 위한 참조 (옵셔널 — 다른 진입 경로에서도 재사용 가능하도록).
     private let homeViewModel: HomeViewModel?
     
@@ -47,7 +48,7 @@ struct GroupDetailView: View {
             }
             ToolbarItem(placement: .topBarTrailing) {
                 Button {
-                    // Phase 7에서 그룹 설정
+                    isPresentingSettings = true
                 } label: {
                     Image(systemName: "ellipsis")
                         .foregroundColor(.damaInk)
@@ -57,6 +58,14 @@ struct GroupDetailView: View {
         .task {
             await viewModel.loadPhotos()
         }
+        .navigationDestination(isPresented: $isPresentingSettings) {
+            GroupSettingsView(group: viewModel.group) { groupId in
+                homeViewModel?.didRemoveGroup(id: groupId)
+                dismiss()
+            }
+        }
+        .environmentObject(auth)
+        
         .onChange(of: pickerSelection) { newItems in
             guard !newItems.isEmpty else { return }
             Task { await handlePickerSelection(newItems) }

@@ -130,6 +130,10 @@ service cloud.firestore {
     match /inviteCodes/{code} {
       allow read: if isSignedIn();
       allow create: if isSignedIn();
+
+      allow delete: if isSignedIn()
+                    && isGroupOwner(resource.data.groupId);
+                    
       allow update, delete: if false;
     }
   }

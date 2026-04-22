@@ -40,7 +40,8 @@ final class HomeViewModel: ObservableObject {
         defer { isLoading = false }
         
         do {
-            groups = try await GroupService.shared.fetchGroups(for: uid)
+            let fetched = try await GroupService.shared.fetchGroups(for: uid)
+            groups = fetched.filter { $0.isActive }
         } catch let error as GroupError {
             errorMessage = error.errorDescription
         } catch {
@@ -107,6 +108,11 @@ final class HomeViewModel: ObservableObject {
     func didDeletePhoto(groupId: String) {
         guard let index = groups.firstIndex(where: { $0.id == groupId }) else { return }
         groups[index].photoCount = max(0, groups[index].photoCount - 1)
+    }
+    
+    /// 나가기/삭제로 해당 그룹이 홈에서 사라져야 할 때.
+    func didRemoveGroup(id: String) {
+        groups.removeAll { $0.id == id }
     }
     
     // MARK: - Local Sync (사진 업로드 등 자식 화면의 변경 반영)

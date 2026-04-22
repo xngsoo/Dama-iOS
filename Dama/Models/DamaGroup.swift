@@ -25,6 +25,7 @@ struct DamaGroup: Codable, Identifiable, Hashable {
     @ServerTimestamp var createdAt: Timestamp?
     var updatedAt: Timestamp?
     var lastPhotoAt: Timestamp?       // 최근 업로드 시각 (홈 정렬용)
+    var deletedAt: Timestamp?         // 삭제 플래그
     
     // MARK: - Constants
     
@@ -37,6 +38,8 @@ struct DamaGroup: Codable, Identifiable, Hashable {
     
     func isOwner(_ userId: String) -> Bool { ownerId == userId }
     func isMember(_ userId: String) -> Bool { memberIds.contains(userId) }
+    
+    var isActive: Bool { deletedAt == nil }
     
     // MARK: - Factory
     

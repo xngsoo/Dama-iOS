@@ -10,11 +10,13 @@ import Foundation
 
 enum GroupError: LocalizedError {
     case notAuthenticated
+    case notAuthorized
     case groupNotFound
     case inviteCodeNotFound
     case alreadyMember
     case groupIsFull
     case notAMember
+    case cannotLeaveAsOwner
     case firestoreFailure(Error)
     case codeGenerationFailed
     
@@ -22,6 +24,8 @@ enum GroupError: LocalizedError {
         switch self {
         case .notAuthenticated:
             return "로그인이 필요해요"
+        case .notAuthorized:
+            return "이 작업을 수행할 권한이 없어요"
         case .groupNotFound:
             return "그룹을 찾을 수 없어요"
         case .inviteCodeNotFound:
@@ -32,6 +36,8 @@ enum GroupError: LocalizedError {
             return "그룹이 가득 찼어요 (최대 10명)"
         case .notAMember:
             return "그룹 멤버가 아니에요"
+        case .cannotLeaveAsOwner:
+            return "그룹장은 나가기 전에 다른 멤버에게 권한을 넘겨주세요"
         case .firestoreFailure:
             return "정보를 불러오는 데 실패했어요"
         case .codeGenerationFailed:
