@@ -24,6 +24,7 @@ struct HomeView: View {
             }
             .navigationBarHidden(true)
         }
+        .tint(.damaInk)
         .task(id: auth.currentUser?.id) {
             await viewModel.loadGroups(for: auth.currentUser?.id)
         }
