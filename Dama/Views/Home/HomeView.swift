@@ -58,47 +58,47 @@ struct HomeView: View {
     // MARK: - List
     
     private var listContent: some View {
-        ScrollView {
-            VStack(spacing: 0) {
-                header
-                    .padding(.horizontal, DamaSpacing.lg)
-                    .padding(.top, DamaSpacing.sm)
-                    .padding(.bottom, DamaSpacing.lg)
-                
-                sectionTitle
-                    .padding(.horizontal, DamaSpacing.lg)
-                    .padding(.bottom, DamaSpacing.sm)
-                
-                LazyVStack(spacing: DamaSpacing.sm) {
-                    ForEach(viewModel.groups) { group in
-                        NavigationLink {
-                            GroupDetailView(group: group, homeViewModel: viewModel)
-                                .environmentObject(auth)
-                        } label: {
-                            GroupRowView(group: group)
-                        }
-                        .buttonStyle(.plain)
-                    }
-                }
+        VStack(spacing: 0) {
+            header
                 .padding(.horizontal, DamaSpacing.lg)
-                
-                Button {
-                    isPresentingJoinGroup = true
-                } label: {
-                    HStack(spacing: DamaSpacing.xs) {
-                        Image(systemName: "link")
-                            .font(.system(size: 12))
-                        Text("초대 코드로 참여")
-                            .font(.damaCaption)
+                .padding(.top, DamaSpacing.sm)
+                .padding(.bottom, DamaSpacing.lg)
+            sectionTitle
+                .padding(.horizontal, DamaSpacing.lg)
+                .padding(.bottom, DamaSpacing.sm)
+            ScrollView {
+                VStack(spacing: 0) {
+                    LazyVStack(spacing: DamaSpacing.sm) {
+                        ForEach(viewModel.groups) { group in
+                            NavigationLink {
+                                GroupDetailView(group: group, homeViewModel: viewModel)
+                                    .environmentObject(auth)
+                            } label: {
+                                GroupRowView(group: group)
+                            }
+                            .buttonStyle(.plain)
+                        }
                     }
-                    .foregroundColor(.damaInkMuted)
+                    .padding(.horizontal, DamaSpacing.lg)
+                    
+                    Button {
+                        isPresentingJoinGroup = true
+                    } label: {
+                        HStack(spacing: DamaSpacing.xs) {
+                            Image(systemName: "link")
+                                .font(.system(size: 12))
+                            Text("초대 코드로 참여")
+                                .font(.damaCaption)
+                        }
+                        .foregroundColor(.damaInkMuted)
+                    }
+                    .padding(.top, DamaSpacing.lg)
+                    .padding(.bottom, DamaSpacing.xl)
                 }
-                .padding(.top, DamaSpacing.lg)
-                .padding(.bottom, DamaSpacing.xl)
             }
-        }
-        .refreshable {
-            await viewModel.refresh(for: auth.currentUser?.id)
+            .refreshable {
+                await viewModel.refresh(for: auth.currentUser?.id)
+            }
         }
     }
     
