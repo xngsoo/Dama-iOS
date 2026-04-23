@@ -4,14 +4,39 @@
 //
 //  Created by SEUNGSOO HAN on 4/20/26.
 //
-//  범용 카드 컨테이너. action 전달 시 탭 가능.
-//    사용 예:
-//    DamaCard { VStack { ... } }
-//    DamaCard(action: { navigate() }) { HStack { ... } }
 
 import SwiftUI
 
-struct DamaCard<Content: View>: View {
+/// Dama 디자인 시스템의 범용 카드 컨테이너 컴포넌트.
+///
+/// - Description:
+///   앱 전반에서 재사용되는 카드 UI로, `action`을 전달하면 탭 가능한 카드로 동작한다.
+///   내부 콘텐츠는 자유롭게 구성할 수 있으며, 일관된 패딩, 배경, 테두리 스타일을 제공한다.
+///
+/// - Behavior:
+///   - action이 nil인 경우: 단순 정보 표시용 카드
+///   - action이 있는 경우: Button으로 감싸져 탭 인터랙션 제공
+///
+/// - Parameters:
+///   - action: 카드 탭 시 실행되는 클로저 (선택)
+///   - content: 카드 내부에 표시할 View
+///
+/// - Example:
+/// ```swift
+/// DamaCard {
+///     VStack { ... }
+/// }
+///
+/// DamaCard(action: {
+///     navigate()
+/// }) {
+///     HStack { ... }
+/// }
+/// ```
+///
+/// - Note:
+///   카드 내부 여백, 배경색, radius는 디자인 시스템 기준을 따른다.
+public struct DamaCard<Content: View>: View {
     
     private let action: (() -> Void)?
     private let content: Content
@@ -24,12 +49,14 @@ struct DamaCard<Content: View>: View {
         self.content = content()
     }
     
-    var body: some View {
-        if let action = action {
-            Button(action: action) { cardBody }
-                .buttonStyle(_DamaCardPressStyle())
-        } else {
-            cardBody
+    public var body: some View {
+        Group {
+            if let action = action {
+                Button(action: action) { cardBody }
+                    .buttonStyle(DamaCardPressStyle())
+            } else {
+                cardBody
+            }
         }
     }
     
@@ -46,7 +73,7 @@ struct DamaCard<Content: View>: View {
     }
 }
 
-private struct _DamaCardPressStyle: ButtonStyle {
+private struct DamaCardPressStyle: ButtonStyle {
     func makeBody(configuration: Configuration) -> some View {
         configuration.label
             .scaleEffect(configuration.isPressed ? 0.98 : 1)
@@ -58,6 +85,16 @@ private struct _DamaCardPressStyle: ButtonStyle {
 // MARK: - Preview
 
 #Preview("Light") {
+    previewContent()
+        .preferredColorScheme(.light)
+}
+
+#Preview("Dark") {
+    previewContent()
+        .preferredColorScheme(.dark)
+}
+
+private func previewContent() -> some View {
     VStack(spacing: DamaSpacing.md) {
         
         // 정보 카드 (탭 불가)
@@ -102,23 +139,4 @@ private struct _DamaCardPressStyle: ButtonStyle {
     .padding(DamaSpacing.xl)
     .frame(maxWidth: .infinity, maxHeight: .infinity)
     .background(Color.damaCream)
-}
-
-#Preview("Dark") {
-    VStack(spacing: DamaSpacing.md) {
-        DamaCard(action: { }) {
-            VStack(alignment: .leading, spacing: DamaSpacing.xs) {
-                Text("제주 2025")
-                    .font(.damaLabel)
-                    .foregroundColor(.damaInk)
-                Text("4명 · 사진 89장")
-                    .font(.damaCaption)
-                    .foregroundColor(.damaInkMuted)
-            }
-        }
-    }
-    .padding(DamaSpacing.xl)
-    .frame(maxWidth: .infinity, maxHeight: .infinity)
-    .background(Color.damaCream)
-    .preferredColorScheme(.dark)
 }
