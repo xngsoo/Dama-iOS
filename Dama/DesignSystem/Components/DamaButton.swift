@@ -89,6 +89,7 @@ private struct _DamaButtonStyle: ButtonStyle {
             .foregroundColor(foregroundColor)
             .background(backgroundColor(isPressed: configuration.isPressed))
             .clipShape(Capsule())
+            .contentShape(Capsule())
             .overlay(borderOverlay)
             .opacity(disabled ? 0.5 : 1)
             .scaleEffect(configuration.isPressed ? 0.97 : 1)
