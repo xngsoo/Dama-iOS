@@ -4,20 +4,54 @@
 //
 //  Created by SEUNGSOO HAN on 4/20/26.
 //
-//    사용 예:
-//    DamaButton("로그인", variant: .primary, fullWidth: true) { login() }
-//    DamaButton("취소", variant: .secondary) { dismiss() }
-//    DamaButton("건너뛰기", variant: .text) { skip() }
 
 import SwiftUI
 
 enum DamaButtonVariant {
-    case primary    // Coral filled — 주요 CTA
-    case secondary  // Outline — 보조 액션
-    case text       // Coral 텍스트만 — 최소 강조
+    /// 주요 CTA (Coral filled)
+    case primary
+    /// 보조 액션 (Outline)
+    case secondary
+    /// 최소 강조 액션 (텍스트 버튼)
+    case text
 }
 
-struct DamaButton: View {
+/// Dama 디자인 시스템의 범용 버튼 컴포넌트.
+///
+/// - Description:
+///   앱 전반에서 사용되는 공통 버튼으로, `variant`에 따라 스타일과 역할이 달라진다.
+///   로딩 상태, 아이콘, 전체 너비(fullWidth) 등을 지원한다.
+///
+/// - Variants:
+///   - primary: 주요 CTA (강조된 채움 버튼)
+///   - secondary: 보조 액션 (outline 스타일)
+///   - text: 최소 강조 액션 (텍스트 버튼)
+///
+/// - Parameters:
+///   - title: 버튼에 표시될 텍스트
+///   - variant: 버튼 스타일 (기본값: primary)
+///   - fullWidth: true일 경우 가로 전체 너비 사용
+///   - icon: SF Symbol 이름 (선택)
+///   - isLoading: true일 경우 로딩 인디케이터 표시 및 비활성화
+///   - action: 버튼 탭 시 실행되는 클로저
+///
+/// - Example:
+/// ```swift
+/// DamaButton("포토북 만들기") {
+///     start()
+/// }
+///
+/// DamaButton("취소", variant: .secondary) {
+///     dismiss()
+/// }
+///
+/// DamaButton("건너뛰기", variant: .text) {
+///     skip()
+/// }
+///
+/// DamaButton("로그인 중...", isLoading: true) { }
+/// ```
+public struct DamaButton: View {
     
     // MARK: - Config
     private let title: String
@@ -45,7 +79,7 @@ struct DamaButton: View {
     }
     
     // MARK: - Body
-    var body: some View {
+    public var body: some View {
         Button(action: action) {
             HStack(spacing: DamaSpacing.sm) {
                 if isLoading {
@@ -62,18 +96,23 @@ struct DamaButton: View {
             }
             .frame(maxWidth: fullWidth ? .infinity : nil)
         }
-        .buttonStyle(_DamaButtonStyle(variant: variant, disabled: isLoading))
+        .buttonStyle(DamaButtonStyle(variant: variant, disabled: isLoading))
         .disabled(isLoading)
     }
     
     private var loadingTint: Color {
-        variant == .primary ? _DamaButtonStyle.primaryFixedCream : .damaInk
+        switch variant {
+        case .primary:
+            return DamaButtonStyle.primaryFixedCream
+        case .secondary, .text:
+            return .damaInk
+        }
     }
 }
 
 // MARK: - ButtonStyle (press animation + variant styling)
 
-private struct _DamaButtonStyle: ButtonStyle {
+private struct DamaButtonStyle: ButtonStyle {
     
     let variant: DamaButtonVariant
     let disabled: Bool
@@ -114,9 +153,12 @@ private struct _DamaButtonStyle: ButtonStyle {
     
     @ViewBuilder
     private var borderOverlay: some View {
-        if variant == .secondary {
+        switch variant {
+        case .secondary:
             Capsule()
                 .stroke(Color.damaInk.opacity(0.15), lineWidth: 0.5)
+        default:
+            EmptyView()
         }
     }
 }
@@ -124,6 +166,16 @@ private struct _DamaButtonStyle: ButtonStyle {
 // MARK: - Preview
 
 #Preview("Light") {
+    previewContent()
+        .preferredColorScheme(.light)
+}
+
+#Preview("Dark") {
+    previewContent()
+        .preferredColorScheme(.dark)
+}
+
+private func previewContent() -> some View {
     VStack(spacing: DamaSpacing.md) {
         DamaButton("포토북 만들기", fullWidth: true) { }
         DamaButton("Apple로 계속하기", fullWidth: true, icon: "apple.logo") { }
@@ -134,16 +186,4 @@ private struct _DamaButtonStyle: ButtonStyle {
     .padding(DamaSpacing.xl)
     .frame(maxWidth: .infinity, maxHeight: .infinity)
     .background(Color.damaCream)
-}
-
-#Preview("Dark") {
-    VStack(spacing: DamaSpacing.md) {
-        DamaButton("포토북 만들기", fullWidth: true) { }
-        DamaButton("취소", variant: .secondary, fullWidth: true) { }
-        DamaButton("건너뛰기", variant: .text) { }
-    }
-    .padding(DamaSpacing.xl)
-    .frame(maxWidth: .infinity, maxHeight: .infinity)
-    .background(Color.damaCream)
-    .preferredColorScheme(.dark)
 }
