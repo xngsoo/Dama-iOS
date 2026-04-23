@@ -4,14 +4,41 @@
 //
 //  Created by SEUNGSOO HAN on 4/20/26.
 //
-//  담아 시그니처 폴라로이드 프레임. 회전·캡션·탭 지원.
-//  사용 예:
-//    DamaPhotoTile(caption: "그날 밤, 종로", rotation: -1.5) {
-//        Color.damaCoral.aspectRatio(1, contentMode: .fit)
-//    }
 
 import SwiftUI
 
+/// Dama 디자인 시스템의 사진 타일(Polaroid 스타일) 컴포넌트
+///
+/// - Description:
+///   사진과 캡션을 함께 표시하는 카드 형태의 UI로, 약간의 회전(`rotation`)을 통해
+///   감성적인 폴라로이드 스타일을 표현한다. `action`을 전달하면 탭 가능한 인터랙션을 제공한다.
+///
+/// - Behavior:
+///   - caption이 nil인 경우: 캡션 영역 없이 사진만 표시
+///   - action이 있는 경우: Button으로 감싸져 탭 인터랙션 제공
+///   - rotation 값에 따라 전체 타일이 회전됨
+///
+/// - Parameters:
+///   - caption: 사진 하단에 표시될 텍스트 (옵션)
+///   - rotation: 타일 회전 각도 (degree 단위)
+///   - action: 타일 탭 시 실행되는 클로저 (옵션)
+///   - photo: 사진 영역에 들어갈 View
+///
+/// - Example:
+/// ```swift
+/// DamaPhotoTile(caption: "그날 밤", rotation: -2) {
+///     Image("sample")
+///         .resizable()
+///         .aspectRatio(contentMode: .fill)
+/// }
+///
+/// DamaPhotoTile {
+///     Color.gray
+/// }
+/// ```
+///
+/// - Note:
+///   폰트, 여백, 배경색은 Dama 디자인 시스템 토큰을 따른다.
 struct DamaPhotoTile<Content: View>: View {
     
     private let caption: String?
@@ -75,6 +102,16 @@ private struct _DamaPhotoTilePressStyle: ButtonStyle {
 // MARK: - Preview
 
 #Preview("Light") {
+    previewContent()
+        .preferredColorScheme(.light)
+}
+
+#Preview("Dark") {
+    previewContent()
+        .preferredColorScheme(.dark)
+}
+
+private func previewContent() -> some View {
     ScrollView {
         VStack(spacing: DamaSpacing.xl) {
             
@@ -100,18 +137,4 @@ private struct _DamaPhotoTilePressStyle: ButtonStyle {
     }
     .frame(maxWidth: .infinity, maxHeight: .infinity)
     .background(Color.damaCream)
-}
-
-#Preview("Dark") {
-    VStack {
-        DamaPhotoTile(caption: "종로 밤거리", rotation: -2) {
-            Color.damaTerracotta
-                .aspectRatio(1, contentMode: .fit)
-                .frame(width: 200)
-        }
-    }
-    .padding(DamaSpacing.xl)
-    .frame(maxWidth: .infinity, maxHeight: .infinity)
-    .background(Color.damaCream)
-    .preferredColorScheme(.dark)
 }
